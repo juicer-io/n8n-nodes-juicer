@@ -1,0 +1,72 @@
+{
+  "name": "Brand mention alert: new posts from a Juicer feed to Telegram",
+  "nodes": [
+    {
+      "id": "m1",
+      "name": "New posts in Juicer",
+      "type": "n8n-nodes-juicer.juicerTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "events": [
+          "post.created"
+        ],
+        "options": {
+          "splitPosts": true
+        }
+      }
+    },
+    {
+      "id": "m2",
+      "name": "Send to Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        260,
+        0
+      ],
+      "parameters": {
+        "chatId": "YOUR_CHAT_ID",
+        "text": "=New mention on {{ $json.platform }} by {{ $json.poster?.name || 'someone' }}{{ $json.ai_sentiment ? ' (' + $json.ai_sentiment + ')' : '' }}:\n\n{{ ($json.message || '').slice(0, 500) }}\n\n{{ $json.url }}",
+        "additionalFields": {
+          "disable_web_page_preview": true
+        }
+      }
+    },
+    {
+      "id": "m3",
+      "name": "How it works",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -320
+      ],
+      "parameters": {
+        "color": 5,
+        "width": 380,
+        "height": 260,
+        "content": "## Brand mention alerts\nJuicer keeps your feed synced in the background and calls this workflow when it finds new posts. No polling.\n\n**Set up**\n1. In Juicer, create a feed with keyword sources, for example Reddit Mentions / Keyword \"your brand\" and X @mentions. The Juicer node can do this too (Feed > Create, Source > Add).\n2. Add your Juicer API key, then activate this workflow. The trigger registers its own webhook.\n3. Set your Telegram chat ID.\n\nTurn on AI moderation with a sentiment filter in the feed to get a sentiment on every post. Needs an HTTPS n8n URL (n8n Cloud works)."
+      }
+    }
+  ],
+  "connections": {
+    "New posts in Juicer": {
+      "main": [
+        [
+          {
+            "node": "Send to Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

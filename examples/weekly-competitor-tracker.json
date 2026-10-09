@@ -1,0 +1,286 @@
+{
+  "name": "Weekly competitor tracker: social profiles and follower counts to Google Sheets",
+  "nodes": [
+    {
+      "id": "c1",
+      "name": "Every Monday",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggersAtDay": [
+                1
+              ],
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "c2",
+      "name": "Look up competitor profiles",
+      "type": "n8n-nodes-juicer.juicer",
+      "typeVersion": 1,
+      "position": [
+        440,
+        0
+      ],
+      "parameters": {
+        "resource": "socialData",
+        "operation": "lookUpProfiles",
+        "handles": "={{ $json.handle }}",
+        "profilePlatforms": "={{ [$json.platform] }}"
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "id": "c3",
+      "name": "One row per profile",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        880,
+        0
+      ],
+      "parameters": {
+        "fieldToSplitOut": "profiles",
+        "include": "selectedOtherFields",
+        "fieldsToInclude": "term,platform",
+        "options": {}
+      }
+    },
+    {
+      "id": "c4",
+      "name": "Shape the row",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1100,
+        0
+      ],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "week",
+              "value": "={{ $now.toFormat('yyyy-MM-dd') }}",
+              "type": "string"
+            },
+            {
+              "id": "a2",
+              "name": "competitor",
+              "value": "={{ $('Competitor accounts').item.json.competitor }}",
+              "type": "string"
+            },
+            {
+              "id": "a3",
+              "name": "platform",
+              "value": "={{ $json.profiles.platform }}",
+              "type": "string"
+            },
+            {
+              "id": "a4",
+              "name": "handle",
+              "value": "={{ $json.profiles.handle }}",
+              "type": "string"
+            },
+            {
+              "id": "a5",
+              "name": "followers",
+              "value": "={{ $json.profiles.metrics?.follower_count }}",
+              "type": "number"
+            },
+            {
+              "id": "a6",
+              "name": "posts",
+              "value": "={{ $json.profiles.metrics?.post_count }}",
+              "type": "number"
+            },
+            {
+              "id": "a7",
+              "name": "url",
+              "value": "={{ $json.profiles.url }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "c5",
+      "name": "Append to Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1320,
+        0
+      ],
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": ""
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Sheet1"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "c6",
+      "name": "How it works",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -320
+      ],
+      "parameters": {
+        "color": 5,
+        "width": 380,
+        "height": 260,
+        "content": "## Weekly competitor tracker\nEvery Monday Juicer looks up each competitor account and appends follower and post counts to a Google Sheet, so you can chart growth week by week.\n\n**Set up**\n1. Add your Juicer API key.\n2. In **Competitor accounts**, list one row per competitor and platform. Brands often use different handles per platform, so check each account's own bio before adding it.\n3. Connect Google Sheets and paste your sheet URL.\n\nOnly exact handle matches are kept. Credits per account: Instagram and TikTok 3, most others 1."
+      }
+    },
+    {
+      "id": "c7",
+      "name": "Exact matches only",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        660,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "f1",
+              "leftValue": "={{ $json.exact_match }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "c8",
+      "name": "Competitor accounts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ],
+      "parameters": {
+        "jsCode": "// One row per competitor and platform. Brands often use different handles per\n// platform, so list each one, and check the account's own bio before adding it.\nconst accounts = [\n  { competitor: 'Competitor A', platform: 'Instagram', handle: 'competitor_a' },\n  { competitor: 'Competitor A', platform: 'Twitter', handle: 'competitora' },\n  { competitor: 'Competitor B', platform: 'YouTube', handle: 'competitorb' },\n  // Platforms: Instagram, TikTok, Twitter (X), YouTube, LinkedIn, Facebook, Pinterest, Bluesky\n];\nreturn accounts.map(account => ({ json: account }));"
+      }
+    }
+  ],
+  "connections": {
+    "Every Monday": {
+      "main": [
+        [
+          {
+            "node": "Competitor accounts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Look up competitor profiles": {
+      "main": [
+        [
+          {
+            "node": "Exact matches only",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "One row per profile": {
+      "main": [
+        [
+          {
+            "node": "Shape the row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Shape the row": {
+      "main": [
+        [
+          {
+            "node": "Append to Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Exact matches only": {
+      "main": [
+        [
+          {
+            "node": "One row per profile",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Competitor accounts": {
+      "main": [
+        [
+          {
+            "node": "Look up competitor profiles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

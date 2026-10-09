@@ -1,0 +1,216 @@
+{
+  "name": "Daily social digest: what people post about your topic, summarized to Slack",
+  "nodes": [
+    {
+      "id": "n1",
+      "name": "Every morning",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "days",
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "n2",
+      "name": "Search posts on Reddit and TikTok",
+      "type": "n8n-nodes-juicer.juicer",
+      "typeVersion": 1,
+      "position": [
+        220,
+        0
+      ],
+      "parameters": {
+        "resource": "socialData",
+        "operation": "searchPosts",
+        "term": "your brand",
+        "platforms": [
+          "Reddit",
+          "TikTok"
+        ],
+        "termType": "mentions",
+        "limit": 25
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "id": "n3",
+      "name": "Combine posts",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        660,
+        0
+      ],
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "posts",
+        "options": {}
+      }
+    },
+    {
+      "id": "n4",
+      "name": "Summarize",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        880,
+        0
+      ],
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a social media analyst. Below are recent social posts about our topic as JSON. Write a short Slack digest: 3 to 5 themes people talk about, the overall mood, and the 3 posts most worth reading with their links. Plain text, no tables.\n\n{{ JSON.stringify($json.posts.map(post => ({ platform: post.platform, author: post.poster?.name, text: (post.message || '').slice(0, 400), url: post.url, likes: post.like_count }))) }}"
+      }
+    },
+    {
+      "id": "n5",
+      "name": "OpenAI model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        880,
+        220
+      ],
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "n6",
+      "name": "Post to Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        1180,
+        0
+      ],
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "#social-digest"
+        },
+        "text": "={{ $json.text }}",
+        "otherOptions": {}
+      }
+    },
+    {
+      "id": "n7",
+      "name": "How it works",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -320
+      ],
+      "parameters": {
+        "color": 5,
+        "width": 380,
+        "height": 260,
+        "content": "## Daily social digest\nEvery morning Juicer searches Reddit and TikTok for your keyword in one call, a Code step keeps posts from the last 2 days that really mention it, the AI model summarizes the themes and mood, and the digest lands in Slack.\n\n**Set up**\n1. Add your Juicer API key (Developer page in Juicer).\n2. Change the term and platforms in the Juicer node. Use a #hashtag with Term Type Hashtag for X, Instagram, LinkedIn or YouTube.\n3. Connect OpenAI and Slack.\n\n**Cost:** each platform spends Juicer API credits per run (Reddit 1, TikTok 3)."
+      }
+    },
+    {
+      "id": "n8",
+      "name": "Keep recent on-topic posts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        0
+      ],
+      "parameters": {
+        "jsCode": "// Keep posts from the last 2 days that actually mention the keyword.\n// Change the keyword to match the term in the Juicer node.\nconst keyword = 'your brand';\nconst since = Date.now() - 2 * 24 * 60 * 60 * 1000;\n\nreturn $input.all().filter(item =>\n  (item.json.message || '').toLowerCase().includes(keyword.toLowerCase()) &&\n  new Date(item.json.post_created_at).getTime() >= since,\n);"
+      }
+    }
+  ],
+  "connections": {
+    "Every morning": {
+      "main": [
+        [
+          {
+            "node": "Search posts on Reddit and TikTok",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search posts on Reddit and TikTok": {
+      "main": [
+        [
+          {
+            "node": "Keep recent on-topic posts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Combine posts": {
+      "main": [
+        [
+          {
+            "node": "Summarize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarize": {
+      "main": [
+        [
+          {
+            "node": "Post to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Summarize",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Keep recent on-topic posts": {
+      "main": [
+        [
+          {
+            "node": "Combine posts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
