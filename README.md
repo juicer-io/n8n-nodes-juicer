@@ -43,7 +43,13 @@ One-off lookups. Nothing is stored in Juicer.
 | Channel | A subreddit on Reddit, a channel on YouTube |
 | Reviews | Google reviews for a Google Place ID |
 
-If one platform fails, the others still return. The node only errors when every platform fails, and then names the reason per platform. Set **Options > Output** to **Raw Response** to see the status and next-page cursor of each platform.
+If one platform fails, the others still return:
+
+- A platform that fails for a temporary reason (a timeout or an upstream error) is retried once automatically. Failed platforms spend no credits.
+- If it still fails, the output gets one extra item for it, marked `error: true` with `platform`, `error_code` and `message`, so a workflow or an AI agent can see which platform is missing instead of getting a silently partial result. Filter on `error` to drop it.
+- The node only stops with an error when every platform fails, and then names the reason per platform.
+
+Set **Options > Output** to **Raw Response** to see the status and next-page cursor of each platform.
 
 ### Feed
 

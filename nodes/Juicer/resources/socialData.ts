@@ -12,7 +12,11 @@ import {
 	dataProfilePlatformOptions,
 	termTypeOptions,
 } from '../shared/descriptions';
-import { throwOnJuicerError } from '../shared/transport';
+import {
+	JUICER_API_BASE_URL,
+	JUICER_CLIENT_HEADERS,
+	throwOnJuicerError,
+} from '../shared/transport';
 
 type PlatformStatus = {
 	platform: string;
@@ -43,19 +47,92 @@ function failWhenEveryPlatformFailed(this: IExecuteSingleFunctions, body: IDataO
 	});
 }
 
+// Error codes the Data API uses for upstream hiccups that usually succeed on a second try.
+const TRANSIENT_ERROR_CODES = ['fetch_timeout', 'platform_error'];
+
+function platformStatuses(body: IDataObject): PlatformStatus[] {
+	return ((body.meta as IDataObject | undefined)?.platforms ?? []) as PlatformStatus[];
+}
+
+// A platform that failed for a transient reason is asked once more on its own and merged
+// back in. Only the first page is retried: a later page has no cursor for the failed
+// platform, so retrying it would refetch page one. Failed platforms spend no credits.
+async function retryTransientFailures(
+	this: IExecuteSingleFunctions,
+	body: IDataObject,
+): Promise<IDataObject> {
+	if (this.getNodeParameter('operation') !== 'searchPosts') return body;
+	if (this.getNodeParameter('returnAll', false) as boolean) return body;
+
+	const statuses = platformStatuses(body);
+	const retryable = statuses.filter(
+		(status) => !status.success && TRANSIENT_ERROR_CODES.includes(status.error_code ?? ''),
+	);
+	if (retryable.length === 0) return body;
+
+	const termType = this.getNodeParameter('termType', 'auto') as string;
+	let retried: IDataObject;
+	try {
+		retried = (await this.helpers.httpRequestWithAuthentication.call(this, 'juicerApi', {
+			method: 'GET',
+			url: `${JUICER_API_BASE_URL}/data/posts`,
+			headers: { Accept: 'application/json', ...JUICER_CLIENT_HEADERS },
+			qs: {
+				term: this.getNodeParameter('term') as string,
+				platforms: retryable.map((status) => status.platform).join(','),
+				...(termType === 'auto' ? {} : { term_type: termType }),
+			},
+			json: true,
+		})) as IDataObject;
+	} catch {
+		// The retry is a best effort: keep the first answer and its failure statuses.
+		return body;
+	}
+
+	const retriedStatuses = new Map(
+		platformStatuses(retried).map((status) => [status.platform, status]),
+	);
+	return {
+		...body,
+		data: [...((body.data ?? []) as IDataObject[]), ...((retried.data ?? []) as IDataObject[])],
+		meta: {
+			...(body.meta as IDataObject),
+			platforms: statuses.map((status) => retriedStatuses.get(status.platform) ?? status),
+		},
+	};
+}
+
+// When some platforms still failed, say so in the output instead of returning a
+// silently partial result: one item per failed platform, marked with `error: true`.
+function failedPlatformItems(body: IDataObject): INodeExecutionData[] {
+	return platformStatuses(body)
+		.filter((status) => !status.success)
+		.map((status) => ({
+			json: {
+				platform: status.platform,
+				error: true,
+				error_code: status.error_code ?? 'failed',
+				message: status.message ?? `${status.platform} returned no results`,
+			},
+		}));
+}
+
 async function splitDataResponse(
 	this: IExecuteSingleFunctions,
 	items: INodeExecutionData[],
 	response: IN8nHttpFullResponse,
 ): Promise<INodeExecutionData[]> {
-	const body = (response.body ?? {}) as IDataObject;
+	const body = await retryTransientFailures.call(this, (response.body ?? {}) as IDataObject);
 	failWhenEveryPlatformFailed.call(this, body);
 
 	const output = this.getNodeParameter('options.output', 'items') as string;
 	if (output === 'raw') return [{ json: body }];
 
 	const records = (body.data ?? []) as IDataObject[];
-	return limitPerPlatform.call(this, records).map((record) => ({ json: record }));
+	return [
+		...limitPerPlatform.call(this, records).map((record) => ({ json: record })),
+		...failedPlatformItems(body),
+	];
 }
 
 // A flat limit would let the first platform's page crowd out the rest, so the
