@@ -1,0 +1,5 @@
+# Changes under .github/ (workflows, the review prompt, this file) need a human
+# code-owner approval. A `pull_request` workflow runs the PR's own copy of
+# claude-review.yml, so without this a PR could edit the review prompt to wave
+# itself through. Enforced by the "main" ruleset (require code owner review).
+/.github/ @chille1987 @EmirVatric @memicelis @ssuljic @tstrachota

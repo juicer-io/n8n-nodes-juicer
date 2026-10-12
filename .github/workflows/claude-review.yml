@@ -1,0 +1,93 @@
+name: Claude PR Review
+
+on:
+  pull_request:
+    types: [opened, ready_for_review, reopened]
+  issue_comment:
+    types: [created]
+
+jobs:
+  review:
+    if: |
+      (github.event_name == 'pull_request' && github.event.pull_request.draft == false) ||
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request && contains(github.event.comment.body, '@claude-review'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # Without this the action exchanges its OIDC token for a Claude GitHub App
+          # token, which fails with 401 unless that app is installed on the repository.
+          # The job's own token carries the pull-requests: write granted above, which is
+          # all the gh commands below need, so the review does not depend on an app.
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          track_progress: false
+          classify_inline_comments: false
+          claude_args: |
+            --model claude-opus-4-8
+            --allowedTools "Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*)"
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
+
+            You are a senior software engineer reviewing a pull request on the Juicer
+            n8n community node package (published to npm as n8n-nodes-juicer). The
+            project's CLAUDE.md / AGENTS.md are already loaded -- follow them, and the
+            .agents/*.md guides they link to.
+
+            Review this pull request in phases:
+
+            **Phase 1 - Understand the change:**
+            - Read the PR description and diff using `gh pr view` and `gh pr diff`
+            - Understand what problem is being solved and whether the change addresses it
+
+            **Phase 2 - Analysis:**
+
+            Security (highest priority):
+            - No secrets, API keys or tokens committed (including .npmrc or test fixtures)
+            - Credentials are only read through the JuicerApi credential and sent via its
+              authenticate block / request helpers; never logged, echoed into node output,
+              or included in error messages
+            - Requests only go to Juicer API hosts; flag any new outbound origin
+            - Trigger/webhook handling validates what it receives and does not trust
+              payload content beyond what it needs
+
+            n8n community node rules (the package must stay eligible for n8n Cloud verification):
+            - No new runtime "dependencies" in package.json (devDependencies only)
+            - package.json `n8n.nodes` / `n8n.credentials` match the files under nodes/ and
+              credentials/ after renames, additions or removals
+            - Node and property descriptions follow the n8n UX guidelines (sentence case
+              display names, clear descriptions, sensible defaults)
+            - Uses n8n-workflow types properly; no `any` or lint suppressions without a
+              stated reason
+            - Errors are thrown as NodeApiError / NodeOperationError, and
+              continueOnFail() is respected for per-item failures
+            - Breaking changes to existing parameters or outputs of a published node need a
+              new node version (see .agents/versioning.md), not an in-place change
+
+            Release consistency:
+            - If package.json version is bumped, CHANGELOG.md must have a matching entry
+            - Publishing happens only through .github/workflows/publish.yml on a version tag
+              (npm provenance); flag changes that bypass or weaken that path
+            - Flag any change to .github/ (workflows, CODEOWNERS) explicitly so a human
+              code owner looks at it
+
+            Code quality:
+            - Clear naming, no dead code, comments explain WHY not what
+            - Behaviour matches the Juicer API (developers.juicer.io); flag guessed
+              endpoints, fields or pagination
+
+            **Phase 3 - Output:**
+            - Complete ALL analysis before posting anything
+            - Compose the full review, then call `gh pr comment` exactly ONCE
+            - No placeholder, partial, or duplicate comments; no inline annotations
+            - Reference files and line numbers; flag severe security issues explicitly
+            - Be constructive: suggest fixes, not just problems
