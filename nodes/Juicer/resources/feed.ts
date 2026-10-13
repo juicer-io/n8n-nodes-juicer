@@ -135,37 +135,50 @@ export const feedDescription: INodeProperties[] = [
 		routing: { send: { type: 'body', property: 'name' } },
 	},
 	{
-		displayName: 'Sync Interval',
-		name: 'syncInterval',
-		type: 'options',
-		options: syncIntervalOptions,
-		default: 'default',
-		description: syncIntervalDescription,
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
 		displayOptions: { show: { resource: ['feed'], operation: ['create'] } },
-		routing: {
-			send: {
-				type: 'body',
-				property: 'sync_interval',
-				value: '={{ $value === "default" ? null : $value }}',
+		options: [
+			{
+				displayName: 'Sync Interval',
+				name: 'syncInterval',
+				type: 'options',
+				// Leaving the field out already means the plan default, so it is not an option here.
+				options: syncIntervalOptions.filter((option) => option.value !== 'default'),
+				default: 1440,
+				description: syncIntervalDescription,
+				routing: { send: { type: 'body', property: 'sync_interval' } },
 			},
-		},
+		],
 	},
 
 	// ── Get ────────────────────────────────────────────────────────
 	{
-		displayName: 'Include Sources',
-		name: 'includeSources',
-		type: 'boolean',
-		default: false,
-		description: 'Whether to include the feed’s sources in the result',
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
 		displayOptions: { show: { resource: ['feed'], operation: ['get'] } },
-		routing: {
-			send: {
-				type: 'query',
-				property: 'include',
-				value: '={{ $value ? "sources" : undefined }}',
+		options: [
+			{
+				displayName: 'Include Sources',
+				name: 'includeSources',
+				type: 'boolean',
+				default: true,
+				description: 'Whether to include the feed’s sources in the result',
+				routing: {
+					send: {
+						type: 'query',
+						property: 'include',
+						value: '={{ $value ? "sources" : undefined }}',
+					},
+				},
 			},
-		},
+		],
 	},
 
 	// ── Get Many ───────────────────────────────────────────────────

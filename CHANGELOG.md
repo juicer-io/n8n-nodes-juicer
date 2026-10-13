@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.3
+
+Changes requested in n8n's verification review:
+
+- Feed > Create: Sync Interval moved into an Additional Fields collection.
+- Feed > Get: Include Sources moved into an Options collection.
+- Social Data > Search Posts: Term Type is marked as a mode picker (no expressions), since Reddit and Google need it.
+
+Workflows built on 0.1.2 or earlier with these two fields set need them re-entered in their new place.
+
 ## 0.1.2
 
 - Search Posts retries a platform once when it fails for a temporary reason (timeout or upstream error). Failed platforms spend no credits.
