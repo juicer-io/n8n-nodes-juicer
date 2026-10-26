@@ -1,4 +1,4 @@
-import type { INodeProperties, INodePropertyOptions } from 'n8n-workflow';
+import type { IDataObject, INodeProperties, INodePropertyOptions } from 'n8n-workflow';
 
 // Platforms served by the Data API without a connected account
 // (Api::V1::Data::PostsFetcher::SUPPORTED_TERM_TYPES).
@@ -127,10 +127,11 @@ export function pagedListFields(show: Record<string, string[]>): INodeProperties
 						properties: {
 							continue:
 								'={{ !!$response.body?.meta && $response.body.meta.page < $response.body.meta.total_pages }}',
+							// n8n spreads `request` over the original options for every page, the first
+							// included, so qs must carry the original query (search text, filters) along.
 							request: {
-								qs: {
-									page: '={{ ($response.body?.meta?.page ?? 0) + 1 }}',
-								},
+								// An expression for the whole qs object: n8n resolves it at runtime, the type only allows objects.
+								qs: '={{ Object.assign({}, $request.qs, { page: ($response.body?.meta?.page ?? 0) + 1 }) }}' as unknown as IDataObject,
 							},
 						},
 					},

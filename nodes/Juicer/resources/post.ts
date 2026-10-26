@@ -58,6 +58,16 @@ export const postDescription: INodeProperties[] = [
 					output: { postReceive: unwrapData },
 				},
 			},
+			{
+				name: 'Search',
+				value: 'search',
+				action: 'Search posts across feeds',
+				description: 'Find posts whose text or author contains a word, across one or more feeds',
+				routing: {
+					request: { method: 'GET', url: '/search/posts' },
+					output: { postReceive: unwrapData },
+				},
+			},
 		],
 		default: 'getAll',
 	},
@@ -129,6 +139,81 @@ export const postDescription: INodeProperties[] = [
 				],
 				default: 'public',
 				routing: { send: { type: 'query', property: 'status' } },
+			},
+		],
+	},
+
+	// ── Search ─────────────────────────────────────────────────────
+	{
+		displayName: 'Search Text',
+		name: 'query',
+		type: 'string',
+		required: true,
+		default: '',
+		placeholder: 'e.g. refund',
+		description: 'Posts whose text or author name contains this',
+		displayOptions: { show: { resource: ['post'], operation: ['search'] } },
+		routing: { send: { type: 'query', property: 'query' } },
+	},
+	{
+		// Required because an account-wide text search reads every post and times out on big accounts.
+		displayName: 'Feed Names or IDs',
+		name: 'feedIds',
+		type: 'multiOptions',
+		required: true,
+		typeOptions: { loadOptionsMethod: 'getFeedOptions' },
+		default: [],
+		description:
+			'Feeds to search in. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+		displayOptions: { show: { resource: ['post'], operation: ['search'] } },
+		routing: {
+			send: {
+				type: 'query',
+				property: 'feed_ids',
+				value: '={{ [].concat($value).join(",") }}',
+			},
+		},
+	},
+	...pagedListFields({ resource: ['post'], operation: ['search'] }),
+	{
+		displayName: 'Filters',
+		name: 'searchFilters',
+		type: 'collection',
+		placeholder: 'Add Filter',
+		default: {},
+		displayOptions: { show: { resource: ['post'], operation: ['search'] } },
+		options: [
+			{
+				displayName: 'After',
+				name: 'startingAt',
+				type: 'dateTime',
+				default: '',
+				description: 'Only posts published after this time',
+				routing: { send: { type: 'query', property: 'starting_at' } },
+			},
+			{
+				displayName: 'Before',
+				name: 'endingAt',
+				type: 'dateTime',
+				default: '',
+				description: 'Only posts published before this time',
+				routing: { send: { type: 'query', property: 'ending_at' } },
+			},
+			{
+				displayName: 'Platform Names or IDs',
+				name: 'platforms',
+				type: 'multiOptions',
+				typeOptions: { loadOptionsMethod: 'getPlatforms' },
+				default: [],
+				description:
+					'Only posts from sources on these platforms. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+				routing: {
+					send: {
+						type: 'query',
+						property: 'platforms',
+						value: '={{ [].concat($value).join(",") || undefined }}',
+					},
+				},
 			},
 		],
 	},

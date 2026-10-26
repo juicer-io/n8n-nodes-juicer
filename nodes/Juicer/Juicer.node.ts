@@ -25,6 +25,11 @@ type Platform = {
 	term_types: PlatformTermType[];
 };
 
+// Shared by the feed picker and the multi-feed list so both label feeds the same way.
+function feedOption(feed: IDataObject): INodePropertyOptions {
+	return { name: `${feed.name as string} (${feed.id as number})`, value: String(feed.id) };
+}
+
 export class Juicer implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Juicer',
@@ -118,10 +123,7 @@ export class Juicer implements INodeType {
 								.toLowerCase()
 								.includes(needle),
 					)
-					.map((feed) => ({
-						name: `${feed.name as string} (${feed.id as number})`,
-						value: String(feed.id),
-					}));
+					.map(feedOption);
 
 				const hasMore =
 					meta.page !== undefined && meta.total_pages !== undefined && meta.page < meta.total_pages;
@@ -130,6 +132,26 @@ export class Juicer implements INodeType {
 		},
 
 		loadOptions: {
+			// Every feed in the account, for multi-feed pickers. Feeds are few per account, so
+			// reading all pages here is cheap.
+			async getFeedOptions(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const options: INodePropertyOptions[] = [];
+				for (let page = 1; page <= 20; page++) {
+					const response = await juicerApiRequest.call(this, 'GET', '/feeds', undefined, {
+						page,
+						per_page: 100,
+					});
+					const feeds = (response.data ?? []) as IDataObject[];
+					options.push(
+						...feeds.map(feedOption),
+					);
+					const meta = (response.meta ?? {}) as { page?: number; total_pages?: number };
+					if (meta.page === undefined || meta.total_pages === undefined) break;
+					if (meta.page >= meta.total_pages) break;
+				}
+				return options.sort((a, b) => a.name.localeCompare(b.name));
+			},
+
 			async getPlatforms(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const response = await juicerApiRequest.call(this, 'GET', '/platforms');
 				const platforms = (response.data ?? []) as Platform[];

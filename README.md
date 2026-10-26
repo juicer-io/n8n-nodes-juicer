@@ -63,7 +63,7 @@ Add, Get Many and Remove. The platform and term type lists load from your Juicer
 
 ### Post
 
-Get Many (with status, date, text and source filters), Get, Approve and Reject.
+Get Many (with status, date, text and source filters), Search (text search across one or more feeds, with date and platform filters), Get, Approve and Reject.
 
 ## Trigger
 
@@ -92,7 +92,7 @@ On credit-based API plans, fetching new posts spends credits. Reading data you a
 
 - Search Posts and Look Up Profiles spend credits per platform on every run: 1 for most platforms, 3 for Instagram, LinkedIn and TikTok, 6 for Facebook. With **Return All** on, every extra page spends credits again.
 - Feeds spend credits each time a source syncs, so an hourly feed costs about 24 times a daily one.
-- Get, Get Many, moderation and the trigger itself are free.
+- Get, Get Many, Search, moderation and the trigger itself are free.
 
 When the balance runs out the node shows the error with a link to top up.
 
