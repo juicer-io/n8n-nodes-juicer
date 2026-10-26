@@ -1,15 +1,55 @@
 {
-  "name": "Brand mention alert: new posts from a Juicer feed to Telegram",
+  "name": "Alert your team in Telegram when a Juicer feed finds new brand mentions",
   "nodes": [
     {
-      "id": "m1",
-      "name": "New posts in Juicer",
-      "type": "n8n-nodes-juicer.juicerTrigger",
+      "parameters": {
+        "content": "## Brand mention alerts in Telegram\nFor marketing and support teams who want to hear about posts that mention their brand within minutes, and see the negative ones first.\n\n### How it works\n1. Juicer keeps your feed synced and calls this workflow when it finds new posts. No polling, no wasted runs.\n2. Each post is checked for negative sentiment.\n3. Negative posts go to your support chat flagged red. Everything else goes to your marketing chat.\n\n### Setup\n1. In Juicer, create a feed with keyword sources, for example Reddit mentions of \"your brand\" and X @mentions. The Juicer node can also do this (Feed > Create, Source > Add).\n2. Turn on AI moderation with a sentiment filter in the feed, so every post gets a sentiment.\n3. Add your Juicer API key (Developer page in Juicer) to **New posts in Juicer**.\n4. Connect Telegram and replace REPLACE_WITH_SUPPORT_CHAT_ID and REPLACE_WITH_MARKETING_CHAT_ID.\n5. Activate the workflow. The trigger registers its own webhook, so n8n needs an HTTPS URL (n8n Cloud works). To test, add a post to the feed or use Juicer's webhook test.\n\n### Customization tips\n- Limit alerts to some feeds with the trigger's Feed IDs option.\n- Swap Telegram for Slack, Teams or email.",
+        "height": 720,
+        "width": 460,
+        "color": 1
+      },
+      "id": "6e65c310-86b6-5b39-9e23-63b6c9477bcb",
+      "name": "Overview",
+      "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        0,
-        0
-      ],
+        -560,
+        -260
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### 1. Receive new posts\nJuicer sends one item per new post, with the feed and source it came from.",
+        "height": 720,
+        "width": 440,
+        "color": 7
+      },
+      "id": "68952eca-f84a-5800-ade4-2363b63a9551",
+      "name": "Receive new posts",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -60,
+        -260
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### 2. Route by sentiment\nNegative posts alert support. All others go to marketing.",
+        "height": 720,
+        "width": 520,
+        "color": 7
+      },
+      "id": "7a4176d0-8226-51b9-a715-f300e22fbab1",
+      "name": "Route by sentiment",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        400,
+        -260
+      ]
+    },
+    {
       "parameters": {
         "events": [
           "post.created"
@@ -17,40 +57,84 @@
         "options": {
           "splitPosts": true
         }
-      }
+      },
+      "id": "9aca9f7f-ced9-5604-b196-bd4ab00c82a6",
+      "name": "New posts in Juicer",
+      "type": "n8n-nodes-juicer.juicerTrigger",
+      "typeVersion": 1,
+      "position": [
+        40,
+        100
+      ]
     },
     {
-      "id": "m2",
-      "name": "Send to Telegram",
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "neg",
+              "leftValue": "={{ $json.ai_sentiment }}",
+              "rightValue": "negative",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "88284a34-16e1-5952-b7a4-24a9167d46c3",
+      "name": "Negative sentiment?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        240,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "REPLACE_WITH_SUPPORT_CHAT_ID",
+        "text": "={{ $json.ai_sentiment === 'negative' ? '🔴 Negative mention' : 'New mention' }} on {{ $json.platform }} by {{ $json.poster?.name || 'someone' }}:\n\n{{ ($json.message || '').slice(0, 500) }}\n\n{{ $json.url }}",
+        "additionalFields": {
+          "disable_web_page_preview": true,
+          "appendAttribution": false
+        }
+      },
+      "id": "c9baf815-1aca-527b-a8c1-b5fdf87ed49f",
+      "name": "Alert support on Telegram",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [
-        260,
+        560,
         0
-      ],
-      "parameters": {
-        "chatId": "YOUR_CHAT_ID",
-        "text": "=New mention on {{ $json.platform }} by {{ $json.poster?.name || 'someone' }}{{ $json.ai_sentiment ? ' (' + $json.ai_sentiment + ')' : '' }}:\n\n{{ ($json.message || '').slice(0, 500) }}\n\n{{ $json.url }}",
-        "additionalFields": {
-          "disable_web_page_preview": true
-        }
-      }
+      ]
     },
     {
-      "id": "m3",
-      "name": "How it works",
-      "type": "n8n-nodes-base.stickyNote",
-      "typeVersion": 1,
-      "position": [
-        -40,
-        -320
-      ],
       "parameters": {
-        "color": 5,
-        "width": 380,
-        "height": 260,
-        "content": "## Brand mention alerts\nJuicer keeps your feed synced in the background and calls this workflow when it finds new posts. No polling.\n\n**Set up**\n1. In Juicer, create a feed with keyword sources, for example Reddit Mentions / Keyword \"your brand\" and X @mentions. The Juicer node can do this too (Feed > Create, Source > Add).\n2. Add your Juicer API key, then activate this workflow. The trigger registers its own webhook.\n3. Set your Telegram chat ID.\n\nTurn on AI moderation with a sentiment filter in the feed to get a sentiment on every post. Needs an HTTPS n8n URL (n8n Cloud works)."
-      }
+        "chatId": "REPLACE_WITH_MARKETING_CHAT_ID",
+        "text": "={{ $json.ai_sentiment === 'negative' ? '🔴 Negative mention' : 'New mention' }} on {{ $json.platform }} by {{ $json.poster?.name || 'someone' }}:\n\n{{ ($json.message || '').slice(0, 500) }}\n\n{{ $json.url }}",
+        "additionalFields": {
+          "disable_web_page_preview": true,
+          "appendAttribution": false
+        }
+      },
+      "id": "acc9dc6b-a362-5535-8080-dfaf9fd3a1f1",
+      "name": "Share with marketing on Telegram",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        560,
+        220
+      ]
     }
   ],
   "connections": {
@@ -58,7 +142,25 @@
       "main": [
         [
           {
-            "node": "Send to Telegram",
+            "node": "Negative sentiment?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Negative sentiment?": {
+      "main": [
+        [
+          {
+            "node": "Alert support on Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Share with marketing on Telegram",
             "type": "main",
             "index": 0
           }
@@ -68,5 +170,9 @@
   },
   "settings": {
     "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
   }
 }

@@ -1,14 +1,62 @@
 {
-  "name": "Daily social digest: what people post about your topic, summarized to Slack",
+  "name": "Summarize daily Reddit and TikTok brand mentions to Slack with Juicer and OpenAI",
   "nodes": [
     {
-      "id": "n1",
+      "parameters": {
+        "content": "## Daily social digest in Slack\nFor marketers and founders who want a two-minute morning read on what people say about their brand or topic, without opening every network.\n\n### How it works\n1. Every morning the Juicer node searches Reddit and TikTok for your keyword in one call.\n2. A Code step keeps posts from the last 2 days that really mention it.\n3. An OpenAI model writes a short digest: the main themes, the mood and the 3 posts worth reading.\n4. The digest is posted to Slack.\n\n### Setup\n1. Add your Juicer API key (Developer page in Juicer) to **Search Reddit and TikTok**.\n2. Replace REPLACE_WITH_YOUR_BRAND in the Juicer node and in **Keep recent on-topic posts**.\n3. Connect OpenAI and Slack, then replace #REPLACE_WITH_CHANNEL.\n4. Click **Execute workflow** to test, then activate it.\n\nEach run spends Juicer API credits per platform (Reddit 1, TikTok 3).\n\n### Customization tips\n- Add X, Instagram, YouTube or LinkedIn. For those, use a #hashtag with Term Type Hashtag.\n- Change the hour in **Every morning**.",
+        "height": 620,
+        "width": 460,
+        "color": 1
+      },
+      "id": "6e65c310-86b6-5b39-9e23-63b6c9477bcb",
+      "name": "Overview",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -700,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### 1. Find posts\nSearch the networks and keep fresh posts that mention your keyword.",
+        "height": 620,
+        "width": 660,
+        "color": 7
+      },
+      "id": "b0ae010a-fea0-5d7e-af2e-01e38d67470d",
+      "name": "Find posts",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -200,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### 2. Summarize and share\nCombine the posts, let the AI write the digest and send it to Slack.",
+        "height": 620,
+        "width": 700,
+        "color": 7
+      },
+      "id": "b789d836-8032-56c5-b76e-5daf58893523",
+      "name": "Summarize and share",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        500,
+        -200
+      ]
+    },
+    {
+      "id": "96887b5f-e97e-5454-84dd-4058dab19dac",
       "name": "Every morning",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [
-        0,
-        0
+        -140,
+        100
       ],
       "parameters": {
         "rule": {
@@ -22,18 +70,18 @@
       }
     },
     {
-      "id": "n2",
-      "name": "Search posts on Reddit and TikTok",
+      "id": "7740a72d-9615-5ff5-afbe-f56c159e8a61",
+      "name": "Search Reddit and TikTok",
       "type": "n8n-nodes-juicer.juicer",
       "typeVersion": 1,
       "position": [
-        220,
-        0
+        40,
+        100
       ],
       "parameters": {
         "resource": "socialData",
         "operation": "searchPosts",
-        "term": "your brand",
+        "term": "REPLACE_WITH_YOUR_BRAND",
         "platforms": [
           "Reddit",
           "TikTok"
@@ -46,13 +94,26 @@
       "waitBetweenTries": 5000
     },
     {
-      "id": "n3",
+      "id": "b68c9014-847c-59d2-b127-7c97c220d416",
+      "name": "Keep recent on-topic posts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        260,
+        100
+      ],
+      "parameters": {
+        "jsCode": "// Keep posts from the last 2 days that actually mention the keyword.\n// Change the keyword to match the term in the Juicer node.\nconst keyword = 'REPLACE_WITH_YOUR_BRAND';\nconst since = Date.now() - 2 * 24 * 60 * 60 * 1000;\n\nreturn $input.all().filter(item =>\n  (item.json.message || '').toLowerCase().includes(keyword.toLowerCase()) &&\n  new Date(item.json.post_created_at).getTime() >= since,\n);"
+      }
+    },
+    {
+      "id": "ff80fc62-09db-591f-98cf-d8ec1bc0dc43",
       "name": "Combine posts",
       "type": "n8n-nodes-base.aggregate",
       "typeVersion": 1,
       "position": [
-        660,
-        0
+        560,
+        100
       ],
       "parameters": {
         "aggregate": "aggregateAllItemData",
@@ -61,13 +122,13 @@
       }
     },
     {
-      "id": "n4",
-      "name": "Summarize",
+      "id": "7da6d531-2bff-5240-844e-131111629881",
+      "name": "Write the digest",
       "type": "@n8n/n8n-nodes-langchain.chainLlm",
       "typeVersion": 1.7,
       "position": [
-        880,
-        0
+        720,
+        100
       ],
       "parameters": {
         "promptType": "define",
@@ -75,13 +136,13 @@
       }
     },
     {
-      "id": "n5",
+      "id": "0caa2b38-e2f9-5daa-9265-52f82b4d280a",
       "name": "OpenAI model",
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
       "typeVersion": 1.2,
       "position": [
-        880,
-        220
+        720,
+        300
       ],
       "parameters": {
         "model": {
@@ -93,52 +154,23 @@
       }
     },
     {
-      "id": "n6",
-      "name": "Post to Slack",
+      "id": "04c1cd50-2ecf-5885-b0f7-86881dc14b72",
+      "name": "Post the digest to Slack",
       "type": "n8n-nodes-base.slack",
       "typeVersion": 2.3,
       "position": [
-        1180,
-        0
+        1040,
+        100
       ],
       "parameters": {
         "select": "channel",
         "channelId": {
           "__rl": true,
           "mode": "name",
-          "value": "#social-digest"
+          "value": "#REPLACE_WITH_CHANNEL"
         },
         "text": "={{ $json.text }}",
         "otherOptions": {}
-      }
-    },
-    {
-      "id": "n7",
-      "name": "How it works",
-      "type": "n8n-nodes-base.stickyNote",
-      "typeVersion": 1,
-      "position": [
-        -40,
-        -320
-      ],
-      "parameters": {
-        "color": 5,
-        "width": 380,
-        "height": 260,
-        "content": "## Daily social digest\nEvery morning Juicer searches Reddit and TikTok for your keyword in one call, a Code step keeps posts from the last 2 days that really mention it, the AI model summarizes the themes and mood, and the digest lands in Slack.\n\n**Set up**\n1. Add your Juicer API key (Developer page in Juicer).\n2. Change the term and platforms in the Juicer node. Use a #hashtag with Term Type Hashtag for X, Instagram, LinkedIn or YouTube.\n3. Connect OpenAI and Slack.\n\n**Cost:** each platform spends Juicer API credits per run (Reddit 1, TikTok 3)."
-      }
-    },
-    {
-      "id": "n8",
-      "name": "Keep recent on-topic posts",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        440,
-        0
-      ],
-      "parameters": {
-        "jsCode": "// Keep posts from the last 2 days that actually mention the keyword.\n// Change the keyword to match the term in the Juicer node.\nconst keyword = 'your brand';\nconst since = Date.now() - 2 * 24 * 60 * 60 * 1000;\n\nreturn $input.all().filter(item =>\n  (item.json.message || '').toLowerCase().includes(keyword.toLowerCase()) &&\n  new Date(item.json.post_created_at).getTime() >= since,\n);"
       }
     }
   ],
@@ -147,52 +179,19 @@
       "main": [
         [
           {
-            "node": "Search posts on Reddit and TikTok",
+            "node": "Search Reddit and TikTok",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Search posts on Reddit and TikTok": {
+    "Search Reddit and TikTok": {
       "main": [
         [
           {
             "node": "Keep recent on-topic posts",
             "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Combine posts": {
-      "main": [
-        [
-          {
-            "node": "Summarize",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Summarize": {
-      "main": [
-        [
-          {
-            "node": "Post to Slack",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "OpenAI model": {
-      "ai_languageModel": [
-        [
-          {
-            "node": "Summarize",
-            "type": "ai_languageModel",
             "index": 0
           }
         ]
@@ -208,9 +207,46 @@
           }
         ]
       ]
+    },
+    "Combine posts": {
+      "main": [
+        [
+          {
+            "node": "Write the digest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write the digest": {
+      "main": [
+        [
+          {
+            "node": "Post the digest to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Write the digest",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
     "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
   }
 }
