@@ -162,7 +162,7 @@
       ],
       "parameters": {
         "promptType": "define",
-        "text": "=You are a social media analyst. Below are recent social posts about our topic as JSON. Write a short Slack digest: 3 to 5 themes people talk about, the overall mood, and the 3 posts most worth reading with their links. Plain text, no tables.\n\n{{ JSON.stringify($json.posts.map(post => ({ platform: post.platform, author: post.poster?.name, text: (post.message || '').slice(0, 400), url: post.url, likes: post.like_count }))) }}"
+        "text": "=You are a social media analyst. Below are recent social posts about our topic as JSON. Write a short Slack digest: 3 to 5 themes people talk about, the overall mood, and the 3 posts most worth reading with their links. Use Slack formatting: *bold* with single asterisks, plain lists, no headings and no tables.\n\n{{ JSON.stringify($json.posts.map(post => ({ platform: post.platform, author: post.poster?.name, text: (post.message || '').slice(0, 400), url: post.url, likes: post.like_count }))) }}"
       }
     },
     {
