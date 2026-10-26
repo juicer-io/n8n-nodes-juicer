@@ -3,8 +3,8 @@
   "nodes": [
     {
       "parameters": {
-        "content": "## Brand mention alerts in Telegram\nFor marketing and support teams who want to hear about posts that mention their brand within minutes, and see the negative ones first.\n\n### How it works\n1. Juicer keeps your feed synced and calls this workflow when it finds new posts. No polling, no wasted runs.\n2. Each post is checked for negative sentiment.\n3. Negative posts go to your support chat flagged red. Everything else goes to your marketing chat.\n\n### Setup\n1. In Juicer, create a feed with keyword sources, for example Reddit mentions of \"your brand\" and X @mentions. The Juicer node can also do this (Feed > Create, Source > Add).\n2. Turn on AI moderation with a sentiment filter in the feed, so every post gets a sentiment.\n3. Add your Juicer API key (Developer page in Juicer) to **New posts in Juicer**.\n4. Connect Telegram and replace REPLACE_WITH_SUPPORT_CHAT_ID and REPLACE_WITH_MARKETING_CHAT_ID.\n5. Activate the workflow. The trigger registers its own webhook, so n8n needs an HTTPS URL (n8n Cloud works). To test, add a post to the feed or use Juicer's webhook test.\n\n### Customization tips\n- Limit alerts to some feeds with the trigger's Feed IDs option.\n- Swap Telegram for Slack, Teams or email.",
-        "height": 720,
+        "content": "## Brand mention alerts in Telegram\nFor marketing and support teams who want to hear about posts that mention their brand within minutes, and see the negative ones first.\n\n### How it works\n1. Juicer keeps your feed synced and calls this workflow when it finds new posts. No polling, no wasted runs.\n2. Each post is checked for negative sentiment.\n3. Negative posts go to your support chat flagged red. Everything else goes to your marketing chat.\n\n### Setup\n1. In Juicer, create a feed with keyword sources, for example Reddit mentions of \"your brand\" and X @mentions. The Juicer node can also do this (Feed > Create, Source > Add).\n2. Turn on AI moderation with a sentiment filter in the feed, so every post gets a sentiment.\n3. Add your Juicer API key (Developer page in Juicer) to **New posts in Juicer**.\n4. Connect Telegram and put your two chat IDs in **Your settings**.\n5. Activate the workflow. The trigger registers its own webhook, so n8n needs an HTTPS URL (n8n Cloud works). To test, add a post to the feed or use Juicer's webhook test.\n\n### Requirements\n- A Juicer account with an API key and a feed with AI moderation\n- A Telegram bot\n\n### Customization tips\n- Limit alerts to some feeds with the trigger's Feed IDs option.\n- Swap Telegram for Slack, Teams or email.\n\nThis template uses the verified Juicer community node (n8n-nodes-juicer). On self-hosted n8n, install it first under Settings > Community nodes.",
+        "height": 860,
         "width": 460,
         "color": 1
       },
@@ -14,14 +14,14 @@
       "typeVersion": 1,
       "position": [
         -560,
-        -260
+        -300
       ]
     },
     {
       "parameters": {
-        "content": "### 1. Receive new posts\nJuicer sends one item per new post, with the feed and source it came from.",
-        "height": 720,
-        "width": 440,
+        "content": "### 1. Receive new posts\nJuicer sends one item per new post, with the feed and source it came from. Set your chat IDs here.",
+        "height": 860,
+        "width": 640,
         "color": 7
       },
       "id": "68952eca-f84a-5800-ade4-2363b63a9551",
@@ -30,13 +30,13 @@
       "typeVersion": 1,
       "position": [
         -60,
-        -260
+        -300
       ]
     },
     {
       "parameters": {
         "content": "### 2. Route by sentiment\nNegative posts alert support. All others go to marketing.",
-        "height": 720,
+        "height": 860,
         "width": 520,
         "color": 7
       },
@@ -45,8 +45,8 @@
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        400,
-        -260
+        600,
+        -300
       ]
     },
     {
@@ -64,6 +64,36 @@
       "typeVersion": 1,
       "position": [
         40,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "support_chat_id",
+              "name": "support_chat_id",
+              "value": "REPLACE_WITH_SUPPORT_CHAT_ID",
+              "type": "string"
+            },
+            {
+              "id": "marketing_chat_id",
+              "name": "marketing_chat_id",
+              "value": "REPLACE_WITH_MARKETING_CHAT_ID",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "1291d359-8eae-5b81-8ec3-b0241bf2155c",
+      "name": "Your settings",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        240,
         100
       ]
     },
@@ -96,13 +126,13 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        240,
+        440,
         100
       ]
     },
     {
       "parameters": {
-        "chatId": "REPLACE_WITH_SUPPORT_CHAT_ID",
+        "chatId": "={{ $('Your settings').item.json.support_chat_id }}",
         "text": "={{ $json.ai_sentiment === 'negative' ? '🔴 Negative mention' : 'New mention' }} on {{ $json.platform }} by {{ $json.poster?.name || 'someone' }}:\n\n{{ ($json.message || '').slice(0, 500) }}\n\n{{ $json.url }}",
         "additionalFields": {
           "disable_web_page_preview": true,
@@ -114,13 +144,13 @@
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [
-        560,
+        760,
         0
       ]
     },
     {
       "parameters": {
-        "chatId": "REPLACE_WITH_MARKETING_CHAT_ID",
+        "chatId": "={{ $('Your settings').item.json.marketing_chat_id }}",
         "text": "={{ $json.ai_sentiment === 'negative' ? '🔴 Negative mention' : 'New mention' }} on {{ $json.platform }} by {{ $json.poster?.name || 'someone' }}:\n\n{{ ($json.message || '').slice(0, 500) }}\n\n{{ $json.url }}",
         "additionalFields": {
           "disable_web_page_preview": true,
@@ -132,13 +162,24 @@
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [
-        560,
+        760,
         220
       ]
     }
   ],
   "connections": {
     "New posts in Juicer": {
+      "main": [
+        [
+          {
+            "node": "Your settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Your settings": {
       "main": [
         [
           {

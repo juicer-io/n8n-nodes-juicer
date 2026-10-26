@@ -3,8 +3,8 @@
   "nodes": [
     {
       "parameters": {
-        "content": "## Weekly competitor tracker\nFor social media managers and agencies who report on competitor growth and are tired of copying follower counts by hand.\n\n### How it works\n1. Every Monday the workflow reads your list of competitor accounts.\n2. The Juicer node looks up each account and returns followers and post counts.\n3. Only exact handle matches are kept, so look-alike accounts never reach your report.\n4. One row per account is added to Google Sheets, so you can chart growth week by week.\n\n### Setup\n1. Add your Juicer API key (Developer page in Juicer) to **Look up competitor profiles**.\n2. In **Competitor accounts**, list one row per competitor and platform. Brands often use different handles per platform, so check each account's own bio first.\n3. Create a sheet with the columns week, competitor, platform, handle, followers, posts and url. Connect Google Sheets and replace REPLACE_WITH_YOUR_SHEET_URL.\n4. Click **Execute workflow** to test.\n\nCredits per account: Instagram and TikTok 3, most others 1.\n\n### Customization tips\n- Run it daily for launches.\n- Post the week's changes to Slack.",
-        "height": 620,
+        "content": "## Weekly competitor tracker\nFor social media managers and agencies who report on competitor growth and are tired of copying follower counts by hand.\n\n### How it works\n1. Every Monday the workflow reads your list of competitor accounts.\n2. The Juicer node looks up each account and returns followers and post counts.\n3. Only exact handle matches are kept, so look-alike accounts never reach your report.\n4. One row per account is added to Google Sheets, so you can chart growth week by week.\n\n### Setup\n1. Add your Juicer API key (Developer page in Juicer) to **Look up competitor profiles**.\n2. In **Competitor accounts**, list one row per competitor and platform. Brands often use different handles per platform, so check each account's own bio first.\n3. Create a sheet with the columns week, competitor, platform, handle, followers, posts and url. Connect Google Sheets and replace REPLACE_WITH_YOUR_SHEET_URL.\n4. Click **Execute workflow** to test.\n\nCredits per account: Instagram and TikTok 3, most others 1.\n\n### Requirements\n- A Juicer account with an API key\n- A Google Sheets account\n\n### Customization tips\n- Run it daily for launches.\n- Post the week's changes to Slack.\n\nThis template uses the verified Juicer community node (n8n-nodes-juicer). On self-hosted n8n, install it first under Settings > Community nodes.",
+        "height": 760,
         "width": 460,
         "color": 1
       },
@@ -14,13 +14,13 @@
       "typeVersion": 1,
       "position": [
         -700,
-        -200
+        -240
       ]
     },
     {
       "parameters": {
         "content": "### 1. Look up accounts\nRead the list, look each account up on its platform and drop anything that isn't an exact match.",
-        "height": 620,
+        "height": 760,
         "width": 860,
         "color": 7
       },
@@ -30,13 +30,13 @@
       "typeVersion": 1,
       "position": [
         -200,
-        -200
+        -240
       ]
     },
     {
       "parameters": {
         "content": "### 2. Save the numbers\nOne row per account with this week's date, added to your sheet.",
-        "height": 620,
+        "height": 760,
         "width": 560,
         "color": 7
       },
@@ -46,7 +46,7 @@
       "typeVersion": 1,
       "position": [
         700,
-        -200
+        -240
       ]
     },
     {

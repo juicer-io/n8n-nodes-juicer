@@ -3,8 +3,8 @@
   "nodes": [
     {
       "parameters": {
-        "content": "## Daily social digest in Slack\nFor marketers and founders who want a two-minute morning read on what people say about their brand or topic, without opening every network.\n\n### How it works\n1. Every morning the Juicer node searches Reddit and TikTok for your keyword in one call.\n2. A Code step keeps posts from the last 2 days that really mention it.\n3. An OpenAI model writes a short digest: the main themes, the mood and the 3 posts worth reading.\n4. The digest is posted to Slack.\n\n### Setup\n1. Add your Juicer API key (Developer page in Juicer) to **Search Reddit and TikTok**.\n2. Replace REPLACE_WITH_YOUR_BRAND in the Juicer node and in **Keep recent on-topic posts**.\n3. Connect OpenAI and Slack, then replace #REPLACE_WITH_CHANNEL.\n4. Click **Execute workflow** to test, then activate it.\n\nEach run spends Juicer API credits per platform (Reddit 1, TikTok 3).\n\n### Customization tips\n- Add X, Instagram, YouTube or LinkedIn. For those, use a #hashtag with Term Type Hashtag.\n- Change the hour in **Every morning**.",
-        "height": 620,
+        "content": "## Daily social digest in Slack\nFor marketers and founders who want a two-minute morning read on what people say about their brand or topic, without opening every network.\n\n### How it works\n1. Every morning the Juicer node searches Reddit and TikTok for your keyword in one call.\n2. A Code step keeps posts from the last 2 days that really mention it.\n3. An OpenAI model writes a short digest: the main themes, the mood and the 3 posts worth reading.\n4. The digest is posted to Slack.\n\n### Setup\n1. Add your Juicer API key (Developer page in Juicer) to **Search Reddit and TikTok**.\n2. Set your keyword and Slack channel in **Your settings**.\n3. Connect OpenAI and Slack.\n4. Click **Execute workflow** to test, then activate it.\n\nEach run spends Juicer API credits per platform (Reddit 1, TikTok 3).\n\n### Requirements\n- A Juicer account with an API key\n- OpenAI and Slack accounts\n\n### Customization tips\n- Add X, Instagram, YouTube or LinkedIn. For those, use a #hashtag with Term Type Hashtag.\n- Change the hour in **Every morning**.\n\nThis template uses the verified Juicer community node (n8n-nodes-juicer). On self-hosted n8n, install it first under Settings > Community nodes.",
+        "height": 760,
         "width": 460,
         "color": 1
       },
@@ -14,14 +14,14 @@
       "typeVersion": 1,
       "position": [
         -700,
-        -200
+        -240
       ]
     },
     {
       "parameters": {
-        "content": "### 1. Find posts\nSearch the networks and keep fresh posts that mention your keyword.",
-        "height": 620,
-        "width": 660,
+        "content": "### 1. Find posts\nSet your keyword, search the networks and keep fresh posts that mention it.",
+        "height": 760,
+        "width": 860,
         "color": 7
       },
       "id": "b0ae010a-fea0-5d7e-af2e-01e38d67470d",
@@ -30,14 +30,14 @@
       "typeVersion": 1,
       "position": [
         -200,
-        -200
+        -240
       ]
     },
     {
       "parameters": {
         "content": "### 2. Summarize and share\nCombine the posts, let the AI write the digest and send it to Slack.",
-        "height": 620,
-        "width": 700,
+        "height": 760,
+        "width": 760,
         "color": 7
       },
       "id": "b789d836-8032-56c5-b76e-5daf58893523",
@@ -45,8 +45,8 @@
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        500,
-        -200
+        700,
+        -240
       ]
     },
     {
@@ -70,18 +70,48 @@
       }
     },
     {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "keyword",
+              "name": "keyword",
+              "value": "REPLACE_WITH_YOUR_BRAND",
+              "type": "string"
+            },
+            {
+              "id": "slack_channel",
+              "name": "slack_channel",
+              "value": "#REPLACE_WITH_CHANNEL",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "1291d359-8eae-5b81-8ec3-b0241bf2155c",
+      "name": "Your settings",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        40,
+        100
+      ]
+    },
+    {
       "id": "7740a72d-9615-5ff5-afbe-f56c159e8a61",
       "name": "Search Reddit and TikTok",
       "type": "n8n-nodes-juicer.juicer",
       "typeVersion": 1,
       "position": [
-        40,
+        240,
         100
       ],
       "parameters": {
         "resource": "socialData",
         "operation": "searchPosts",
-        "term": "REPLACE_WITH_YOUR_BRAND",
+        "term": "={{ $json.keyword }}",
         "platforms": [
           "Reddit",
           "TikTok"
@@ -99,11 +129,11 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        260,
+        440,
         100
       ],
       "parameters": {
-        "jsCode": "// Keep posts from the last 2 days that actually mention the keyword.\n// Change the keyword to match the term in the Juicer node.\nconst keyword = 'REPLACE_WITH_YOUR_BRAND';\nconst since = Date.now() - 2 * 24 * 60 * 60 * 1000;\n\nreturn $input.all().filter(item =>\n  (item.json.message || '').toLowerCase().includes(keyword.toLowerCase()) &&\n  new Date(item.json.post_created_at).getTime() >= since,\n);"
+        "jsCode": "// Keep posts from the last 2 days that actually mention the keyword.\nconst keyword = $('Your settings').first().json.keyword;\nconst since = Date.now() - 2 * 24 * 60 * 60 * 1000;\n\nreturn $input.all().filter(item =>\n  (item.json.message || '').toLowerCase().includes(keyword.toLowerCase()) &&\n  new Date(item.json.post_created_at).getTime() >= since,\n);"
       }
     },
     {
@@ -112,7 +142,7 @@
       "type": "n8n-nodes-base.aggregate",
       "typeVersion": 1,
       "position": [
-        560,
+        760,
         100
       ],
       "parameters": {
@@ -127,7 +157,7 @@
       "type": "@n8n/n8n-nodes-langchain.chainLlm",
       "typeVersion": 1.7,
       "position": [
-        720,
+        940,
         100
       ],
       "parameters": {
@@ -141,7 +171,7 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
       "typeVersion": 1.2,
       "position": [
-        720,
+        940,
         300
       ],
       "parameters": {
@@ -159,7 +189,7 @@
       "type": "n8n-nodes-base.slack",
       "typeVersion": 2.3,
       "position": [
-        1040,
+        1260,
         100
       ],
       "parameters": {
@@ -167,7 +197,7 @@
         "channelId": {
           "__rl": true,
           "mode": "name",
-          "value": "#REPLACE_WITH_CHANNEL"
+          "value": "={{ $('Your settings').first().json.slack_channel }}"
         },
         "text": "={{ $json.text }}",
         "otherOptions": {}
@@ -176,6 +206,17 @@
   ],
   "connections": {
     "Every morning": {
+      "main": [
+        [
+          {
+            "node": "Your settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Your settings": {
       "main": [
         [
           {
