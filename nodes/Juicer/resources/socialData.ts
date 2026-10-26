@@ -261,13 +261,10 @@ export const socialDataDescription: INodeProperties[] = [
 					properties: {
 						continue:
 							'={{ ($response.body?.meta?.platforms ?? []).some(status => !!status.next_cursor) }}',
+						// n8n spreads `request` over the original options for every page, the first included,
+						// so qs keeps the term and term type and only swaps in the platforms that have a next page.
 						request: {
-							qs: {
-								platforms:
-									'={{ $response.body.meta.platforms.filter(status => !!status.next_cursor).map(status => status.platform).join(",") }}',
-								cursor:
-									'={{ $response.body.meta.platforms.filter(status => !!status.next_cursor).map(status => status.next_cursor).join(",") }}',
-							},
+							qs: '={{ Object.assign({}, $request.qs, $response.body?.meta?.platforms ? { platforms: $response.body.meta.platforms.filter(status => !!status.next_cursor).map(status => status.platform).join(","), cursor: $response.body.meta.platforms.filter(status => !!status.next_cursor).map(status => status.next_cursor).join(",") } : {}) }}' as unknown as IDataObject,
 						},
 					},
 				},

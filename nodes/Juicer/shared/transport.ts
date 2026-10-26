@@ -61,6 +61,9 @@ export function describeJuicerError(
 		social_account_required: 'This platform needs a connected social account in Juicer.',
 		feed_limit_reached: 'Your Juicer plan does not allow more feeds.',
 		source_limit_reached: 'This feed has reached its source limit.',
+		search_too_broad:
+			'The search took too long. Pick fewer or smaller feeds, add an After/Before date range or use a more specific search text.',
+		query_required: 'Enter the text to search for.',
 	};
 
 	const description = [

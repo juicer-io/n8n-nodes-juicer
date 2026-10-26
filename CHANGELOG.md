@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.4
+
+- Post > Search: find posts whose text or author contains a word, across one or more feeds, with optional date and platform filters and Return All. Feeds are required, because an account-wide text search can time out; a search that still takes too long now says how to narrow it.
+- Fix: Return All dropped the other query parameters. Post and Feed > Get Many ignored their filters, and Social Data > Search Posts lost its term, when Return All was on.
+
 ## 0.1.3
 
 Changes requested in n8n's verification review:
