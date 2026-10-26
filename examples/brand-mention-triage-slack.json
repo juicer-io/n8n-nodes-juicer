@@ -1,0 +1,758 @@
+{
+  "name": "Triage brand mentions with AI, moderate your Juicer social wall and alert support in Slack",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## AI brand mention triage\nFor social media and support teams who collect brand mentions in Juicer and want each one handled: complaints answered fast, praise shown on the website wall, spam kept off it.\n\n### How it works\n1. Juicer calls this workflow when your feed finds new posts. A first sync can bring 100+ posts, so only the newest few are processed per delivery (default 5).\n2. An OpenAI model reads each post and returns its type, urgency, a one-line summary and a suggested reply.\n3. Complaints and questions go to your support channel in Slack with the suggested reply.\n4. Praise is approved in Juicer so it shows on your social wall. Marketing gets a note.\n5. Spam is rejected in Juicer so it never shows.\n6. Every decision is logged to Google Sheets.\n\n### Setup\nAbout 15 minutes.\n\n1. In Juicer, create a feed with keyword sources for your brand and turn on the moderation queue, so new posts wait for approval.\n2. Add your Juicer API key (Developer page in Juicer) to the three Juicer nodes.\n3. Connect OpenAI, Slack and Google Sheets.\n4. Fill in **Your settings**: your support and marketing Slack channels, the cap and your log sheet URL.\n5. Activate the workflow. The trigger registers its own webhook, so n8n needs an HTTPS URL (n8n Cloud works).\n\n### Requirements\n- A Juicer account with an API key\n- OpenAI, Slack and Google Sheets accounts\n\n### Customization tips\n- Change the categories or the reply tone in **Classify the mention**.\n- Swap Slack for Microsoft Teams, Telegram or email.\n\nThis template uses the verified Juicer community node (n8n-nodes-juicer). On self-hosted n8n, install it first under Settings > Community nodes.",
+        "height": 1040,
+        "width": 460,
+        "color": 1
+      },
+      "id": "6e65c310-86b6-5b39-9e23-63b6c9477bcb",
+      "name": "Overview",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 1. Receive new posts\nJuicer sends one item per new post. Big batches are trimmed to the newest few.",
+        "height": 1040,
+        "width": 600,
+        "color": 7
+      },
+      "id": "68952eca-f84a-5800-ade4-2363b63a9551",
+      "name": "Receive new posts",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -60,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 2. Let AI read each post\nType, urgency, summary and a suggested reply.",
+        "height": 1040,
+        "width": 480,
+        "color": 7
+      },
+      "id": "edcb4c35-7ccf-5403-9bee-aa4060028b6c",
+      "name": "Read each post",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        560,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 3. Act in Juicer and notify\nAlert support, approve praise for the wall, reject spam.",
+        "height": 1040,
+        "width": 700,
+        "color": 7
+      },
+      "id": "c954a410-7f36-56bd-a9c8-daa873fa22c0",
+      "name": "Act on the post",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1060,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 4. Log every decision\nOne row per post in Google Sheets.",
+        "height": 1040,
+        "width": 460,
+        "color": 7
+      },
+      "id": "012347a0-3834-5434-b710-6bf535fed3f5",
+      "name": "Log the decision",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1780,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "events": [
+          "post.created"
+        ],
+        "options": {
+          "splitPosts": true
+        }
+      },
+      "id": "9aca9f7f-ced9-5604-b196-bd4ab00c82a6",
+      "name": "New posts in Juicer",
+      "type": "n8n-nodes-juicer.juicerTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "support_channel",
+              "name": "support_channel",
+              "value": "#REPLACE_WITH_SUPPORT_CHANNEL",
+              "type": "string"
+            },
+            {
+              "id": "marketing_channel",
+              "name": "marketing_channel",
+              "value": "#REPLACE_WITH_MARKETING_CHANNEL",
+              "type": "string"
+            },
+            {
+              "id": "max_posts_per_delivery",
+              "name": "max_posts_per_delivery",
+              "value": 5,
+              "type": "number"
+            },
+            {
+              "id": "log_sheet_url",
+              "name": "log_sheet_url",
+              "value": "REPLACE_WITH_YOUR_SHEET_URL",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "1291d359-8eae-5b81-8ec3-b0241bf2155c",
+      "name": "Your settings",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        200,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// A new source's first sync can deliver 100+ posts in one go.\n// Triage only the newest few so the AI and chat costs stay small.\nconst maxPosts = Number($('Your settings').first().json.max_posts_per_delivery) || 5;\nconst postedAt = item => new Date(item.json.external_created_at || item.json.created_at || 0).getTime();\n\nreturn $input.all().sort((a, b) => postedAt(b) - postedAt(a)).slice(0, maxPosts);"
+      },
+      "id": "3088b232-658c-598c-9d58-c1853b61c860",
+      "name": "Keep the newest posts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        400,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "text": "=Classify this social media post about our brand.\n\nPlatform: {{ $json.platform }}\nAuthor: {{ $json.poster?.name || 'unknown' }}\nPost: {{ ($json.message || '').slice(0, 1500) }}",
+        "schemaType": "fromAttributes",
+        "attributes": {
+          "attributes": [
+            {
+              "name": "type",
+              "type": "string",
+              "description": "One word: complaint (unhappy customer or problem), question (asks something), praise (positive about the brand), spam (ads, scams, unrelated promotion) or other.",
+              "required": true
+            },
+            {
+              "name": "urgency",
+              "type": "string",
+              "description": "One word: high (angry, public risk or many people affected), normal or low.",
+              "required": true
+            },
+            {
+              "name": "summary",
+              "type": "string",
+              "description": "One short sentence saying what the post is about.",
+              "required": true
+            },
+            {
+              "name": "suggested_reply",
+              "type": "string",
+              "description": "A short, friendly reply a support person could post, in the language of the post. Write \"none\" for spam.",
+              "required": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b0c5fdb0-f02b-585b-b6be-166ac93ba464",
+      "name": "Classify the mention",
+      "type": "@n8n/n8n-nodes-langchain.informationExtractor",
+      "typeVersion": 1.2,
+      "position": [
+        620,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "id": "0caa2b38-e2f9-5daa-9265-52f82b4d280a",
+      "name": "OpenAI model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        620,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "feed_id",
+              "name": "feed_id",
+              "value": "={{ $('Keep the newest posts').item.json.feed?.id }}",
+              "type": "string"
+            },
+            {
+              "id": "post_id",
+              "name": "post_id",
+              "value": "={{ $('Keep the newest posts').item.json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "platform",
+              "name": "platform",
+              "value": "={{ $('Keep the newest posts').item.json.platform }}",
+              "type": "string"
+            },
+            {
+              "id": "author",
+              "name": "author",
+              "value": "={{ $('Keep the newest posts').item.json.poster?.name || 'someone' }}",
+              "type": "string"
+            },
+            {
+              "id": "url",
+              "name": "url",
+              "value": "={{ $('Keep the newest posts').item.json.url }}",
+              "type": "string"
+            },
+            {
+              "id": "type",
+              "name": "type",
+              "value": "={{ String($json.output.type || 'other').toLowerCase().trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "urgency",
+              "name": "urgency",
+              "value": "={{ String($json.output.urgency || 'normal').toLowerCase().trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "summary",
+              "name": "summary",
+              "value": "={{ $json.output.summary }}",
+              "type": "string"
+            },
+            {
+              "id": "suggested_reply",
+              "name": "suggested_reply",
+              "value": "={{ $json.output.suggested_reply }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": false,
+        "options": {}
+      },
+      "id": "ee993750-6729-55d7-9c76-85c5865ef025",
+      "name": "Post and verdict",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        860,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "Needs a reply-complaint",
+                    "leftValue": "={{ $json.type }}",
+                    "rightValue": "complaint",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  },
+                  {
+                    "id": "Needs a reply-question",
+                    "leftValue": "={{ $json.type }}",
+                    "rightValue": "question",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "or"
+              },
+              "renameOutput": true,
+              "outputKey": "Needs a reply"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "Praise-praise",
+                    "leftValue": "={{ $json.type }}",
+                    "rightValue": "praise",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "or"
+              },
+              "renameOutput": true,
+              "outputKey": "Praise"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "Spam-spam",
+                    "leftValue": "={{ $json.type }}",
+                    "rightValue": "spam",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "or"
+              },
+              "renameOutput": true,
+              "outputKey": "Spam"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "Other"
+        }
+      },
+      "id": "8751f6cc-6185-597a-be08-e440f8d48813",
+      "name": "Route by type",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        1100,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "={{ $('Your settings').first().json.support_channel }}"
+        },
+        "text": "={{ $json.urgency === 'high' ? ':red_circle: ' : '' }}*{{ $json.type === 'question' ? 'Question' : 'Complaint' }}* on {{ $json.platform }} by {{ $json.author }} ({{ $json.urgency }} urgency)\n\n{{ $json.summary }}\n\n*Suggested reply:*\n{{ $json.suggested_reply }}\n\n{{ $json.url }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false,
+          "unfurl_links": false
+        }
+      },
+      "id": "eb554f76-c154-5ebd-ab35-00c8e4745c4b",
+      "name": "Alert support in Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        1340,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "post",
+        "operation": "approve",
+        "feedId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $json.feed_id }}"
+        },
+        "postId": "={{ $json.post_id }}"
+      },
+      "id": "b3dc4831-ca6a-5a8f-8478-60c052d69008",
+      "name": "Approve it on the wall",
+      "type": "n8n-nodes-juicer.juicer",
+      "typeVersion": 1,
+      "position": [
+        1340,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "={{ $('Your settings').first().json.marketing_channel }}"
+        },
+        "text": "=*Praise* on {{ $('Post and verdict').item.json.platform }} by {{ $('Post and verdict').item.json.author }}, now live on the wall:\n\n{{ $('Post and verdict').item.json.summary }}\n\n{{ $('Post and verdict').item.json.url }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false,
+          "unfurl_links": false
+        }
+      },
+      "id": "8e3c8f53-a7d8-5305-b001-d7c9d64a29bc",
+      "name": "Tell marketing in Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        1560,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "post",
+        "operation": "reject",
+        "feedId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $json.feed_id }}"
+        },
+        "postId": "={{ $json.post_id }}"
+      },
+      "id": "967b2e74-b754-513e-b370-d7f2ee64717b",
+      "name": "Hide spam from the wall",
+      "type": "n8n-nodes-juicer.juicer",
+      "typeVersion": 1,
+      "position": [
+        1340,
+        400
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "0e2b33df-30af-544b-bc9d-70e9faff5b3a",
+      "name": "No action needed",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1340,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "date",
+              "name": "date",
+              "value": "={{ $now.toFormat('yyyy-MM-dd HH:mm') }}",
+              "type": "string"
+            },
+            {
+              "id": "platform",
+              "name": "platform",
+              "value": "={{ $('Post and verdict').item.json.platform }}",
+              "type": "string"
+            },
+            {
+              "id": "author",
+              "name": "author",
+              "value": "={{ $('Post and verdict').item.json.author }}",
+              "type": "string"
+            },
+            {
+              "id": "type",
+              "name": "type",
+              "value": "={{ $('Post and verdict').item.json.type }}",
+              "type": "string"
+            },
+            {
+              "id": "urgency",
+              "name": "urgency",
+              "value": "={{ $('Post and verdict').item.json.urgency }}",
+              "type": "string"
+            },
+            {
+              "id": "summary",
+              "name": "summary",
+              "value": "={{ $('Post and verdict').item.json.summary }}",
+              "type": "string"
+            },
+            {
+              "id": "url",
+              "name": "url",
+              "value": "={{ $('Post and verdict').item.json.url }}",
+              "type": "string"
+            },
+            {
+              "id": "action",
+              "name": "action",
+              "value": "={{ { complaint: 'Alerted support', question: 'Alerted support', praise: 'Approved on the wall', spam: 'Hidden from the wall' }[$('Post and verdict').item.json.type] || 'No action' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": false,
+        "options": {}
+      },
+      "id": "3eaccf5c-6dee-56ff-acb7-b100443121fb",
+      "name": "Log row",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1820,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "={{ $('Your settings').first().json.log_sheet_url }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gid=0"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "2fe52bf9-24d6-5893-ba7e-6e941386b0a7",
+      "name": "Log to Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2040,
+        200
+      ]
+    }
+  ],
+  "connections": {
+    "New posts in Juicer": {
+      "main": [
+        [
+          {
+            "node": "Your settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Your settings": {
+      "main": [
+        [
+          {
+            "node": "Keep the newest posts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Keep the newest posts": {
+      "main": [
+        [
+          {
+            "node": "Classify the mention",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classify the mention": {
+      "main": [
+        [
+          {
+            "node": "Post and verdict",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Post and verdict": {
+      "main": [
+        [
+          {
+            "node": "Route by type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by type": {
+      "main": [
+        [
+          {
+            "node": "Alert support in Slack",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Approve it on the wall",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Hide spam from the wall",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No action needed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Approve it on the wall": {
+      "main": [
+        [
+          {
+            "node": "Tell marketing in Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Alert support in Slack": {
+      "main": [
+        [
+          {
+            "node": "Log row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tell marketing in Slack": {
+      "main": [
+        [
+          {
+            "node": "Log row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hide spam from the wall": {
+      "main": [
+        [
+          {
+            "node": "Log row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "No action needed": {
+      "main": [
+        [
+          {
+            "node": "Log row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log row": {
+      "main": [
+        [
+          {
+            "node": "Log to Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Classify the mention",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}
