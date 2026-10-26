@@ -3,8 +3,8 @@
   "nodes": [
     {
       "parameters": {
-        "content": "## Brand mention alerts in Telegram\nFor marketing and support teams who want to hear about posts that mention their brand within minutes, and see the negative ones first.\n\n### How it works\n1. Juicer keeps your feed synced and calls this workflow when it finds new posts. No polling, no wasted runs.\n2. Each post is checked for negative sentiment.\n3. Negative posts go to your support chat flagged red. Everything else goes to your marketing chat.\n\n### Setup\n1. In Juicer, create a feed with keyword sources, for example Reddit mentions of \"your brand\" and X @mentions. The Juicer node can also do this (Feed > Create, Source > Add).\n2. Turn on AI moderation with a sentiment filter in the feed, so every post gets a sentiment.\n3. Add your Juicer API key (Developer page in Juicer) to **New posts in Juicer**.\n4. Connect Telegram and put your two chat IDs in **Your settings**.\n5. Activate the workflow. The trigger registers its own webhook, so n8n needs an HTTPS URL (n8n Cloud works). To test, add a post to the feed or use Juicer's webhook test.\n\n### Requirements\n- A Juicer account with an API key and a feed with AI moderation\n- A Telegram bot\n\n### Customization tips\n- Limit alerts to some feeds with the trigger's Feed IDs option.\n- Swap Telegram for Slack, Teams or email.\n\nThis template uses the verified Juicer community node (n8n-nodes-juicer). On self-hosted n8n, install it first under Settings > Community nodes.",
-        "height": 860,
+        "content": "## Brand mention alerts in Telegram\nFor marketing and support teams who want to hear about posts that mention their brand within minutes, and see the negative ones first.\n\n### How it works\n1. Juicer keeps your feed synced and calls this workflow when it finds new posts. No polling, no wasted runs.\n2. Each post is checked for negative sentiment.\n3. Negative posts go to your support chat flagged red. Everything else goes to your marketing chat.\n\n### Setup\nAbout 15 minutes.\n\n1. In Juicer, create a feed with keyword sources, for example Reddit mentions of \"your brand\" and X @mentions. The Juicer node can also do this (Feed > Create, Source > Add).\n2. Turn on AI moderation with a sentiment filter in the feed, so every post gets a sentiment.\n3. Add your Juicer API key (Developer page in Juicer) to **New posts in Juicer**.\n4. Connect Telegram and put your two chat IDs in **Your settings**.\n5. Activate the workflow. The trigger registers its own webhook, so n8n needs an HTTPS URL (n8n Cloud works). To test, add a post to the feed or use Juicer's webhook test.\n\n### Requirements\n- A Juicer account with an API key and a feed with AI moderation\n- A Telegram bot\n\n### Customization tips\n- Limit alerts to some feeds with the trigger's Feed IDs option.\n- Swap Telegram for Slack, Teams or email.\n\nThis template uses the verified Juicer community node (n8n-nodes-juicer). On self-hosted n8n, install it first under Settings > Community nodes.",
+        "height": 940,
         "width": 460,
         "color": 1
       },
@@ -19,8 +19,8 @@
     },
     {
       "parameters": {
-        "content": "### 1. Receive new posts\nJuicer sends one item per new post, with the feed and source it came from. Set your chat IDs here.",
-        "height": 860,
+        "content": "## 1. Receive new posts\nJuicer sends one item per new post, with the feed and source it came from. Set your chat IDs here.",
+        "height": 940,
         "width": 640,
         "color": 7
       },
@@ -35,8 +35,8 @@
     },
     {
       "parameters": {
-        "content": "### 2. Route by sentiment\nNegative posts alert support. All others go to marketing.",
-        "height": 860,
+        "content": "## 2. Route by sentiment\nNegative posts alert support. All others go to marketing.",
+        "height": 940,
         "width": 520,
         "color": 7
       },
