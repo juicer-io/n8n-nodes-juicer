@@ -1,14 +1,78 @@
 {
-  "name": "Weekly competitor tracker: social profiles and follower counts to Google Sheets",
+  "name": "Track weekly competitor follower growth in Google Sheets and Slack with Juicer",
   "nodes": [
     {
-      "id": "c1",
+      "parameters": {
+        "content": "## Weekly competitor growth tracker\nFor social media managers and agencies who report on competitor growth and are tired of copying follower counts by hand.\n\n### How it works\n1. Every Monday the workflow reads your list of competitor accounts.\n2. The Juicer node looks up each account and returns followers and post counts.\n3. Only exact handle matches are kept, so look-alike accounts never reach your report.\n4. One row per account is added to Google Sheets.\n5. The workflow compares each account with its previous row and posts a growth ranking to Slack.\n\n### Setup\nAbout 10 minutes.\n\n1. Add your Juicer API key (Developer page in Juicer) to **Look up competitor profiles**.\n2. In **Competitor accounts**, list one row per competitor and platform. Check each account's own bio first.\n3. Create a sheet with the columns week, competitor, platform, handle, followers, posts and url.\n4. Put the sheet URL and a Slack channel in **Your settings**, then connect Google Sheets and Slack.\n5. Click **Execute workflow** to test. The ranking starts from the second week.\n\nCredits per account: Instagram and TikTok 3, most others 1.\n\n### Requirements\n- A Juicer account with an API key\n- Google Sheets and Slack accounts\n\n### Customization tips\n- Run it daily for launches.\n- Add post counts or engagement to the ranking.\n\nThis template uses the verified Juicer community node (n8n-nodes-juicer). On self-hosted n8n, install it first under Settings > Community nodes.",
+        "height": 900,
+        "width": 460,
+        "color": 1
+      },
+      "id": "6e65c310-86b6-5b39-9e23-63b6c9477bcb",
+      "name": "Overview",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -700,
+        -240
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 1. Look up accounts\nRead the list, look each account up and drop anything that isn't an exact match.",
+        "height": 900,
+        "width": 980,
+        "color": 7
+      },
+      "id": "8abd21ea-ce8a-58ae-ac28-7a3a979acbbf",
+      "name": "Look up accounts",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -200,
+        -240
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 2. Save and compare\nLog this week's numbers, then compare with the previous row per account.",
+        "height": 900,
+        "width": 780,
+        "color": 7
+      },
+      "id": "7691bb01-8a5b-5d2b-952f-654a3815b39f",
+      "name": "Save and compare",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        800,
+        -240
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 3. Share the ranking\nPost who grew fastest to Slack.",
+        "height": 900,
+        "width": 400,
+        "color": 7
+      },
+      "id": "ecd5c200-598f-5bfa-a5d4-9c8a27dabb09",
+      "name": "Share the ranking",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1600,
+        -240
+      ]
+    },
+    {
+      "id": "f7a0a7bf-b339-5ab1-91db-0abec057e095",
       "name": "Every Monday",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [
-        0,
-        0
+        -140,
+        100
       ],
       "parameters": {
         "rule": {
@@ -25,13 +89,56 @@
       }
     },
     {
-      "id": "c2",
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "sheet_url",
+              "name": "sheet_url",
+              "value": "REPLACE_WITH_YOUR_SHEET_URL",
+              "type": "string"
+            },
+            {
+              "id": "slack_channel",
+              "name": "slack_channel",
+              "value": "#REPLACE_WITH_CHANNEL",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "1291d359-8eae-5b81-8ec3-b0241bf2155c",
+      "name": "Your settings",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        40,
+        100
+      ]
+    },
+    {
+      "id": "8cd16093-d828-5f2d-b589-aff7f17554c5",
+      "name": "Competitor accounts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        100
+      ],
+      "parameters": {
+        "jsCode": "// One row per competitor and platform. Brands often use different handles per\n// platform, so list each one. Check the account's own bio before adding it.\nconst accounts = [\n  { competitor: 'Competitor A', platform: 'Instagram', handle: 'competitor_a' },\n  { competitor: 'Competitor A', platform: 'Twitter', handle: 'competitora' },\n  { competitor: 'Competitor B', platform: 'YouTube', handle: 'competitorb' },\n  // Platforms: Instagram, TikTok, Twitter (X), YouTube, LinkedIn, Facebook, Pinterest, Bluesky\n];\nreturn accounts.map(account => ({ json: account }));"
+      }
+    },
+    {
+      "id": "7525b66c-74fc-5d4b-bc4d-0adce0661ca5",
       "name": "Look up competitor profiles",
       "type": "n8n-nodes-juicer.juicer",
       "typeVersion": 1,
       "position": [
-        440,
-        0
+        400,
+        100
       ],
       "parameters": {
         "resource": "socialData",
@@ -44,13 +151,47 @@
       "waitBetweenTries": 5000
     },
     {
-      "id": "c3",
+      "id": "3e251623-3aac-5959-a679-2dc6bf52dc84",
+      "name": "Exact matches only",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        580,
+        100
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "f1",
+              "leftValue": "={{ $json.exact_match }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "cf0d4841-0e63-58b6-9c35-52ab2dbd8b03",
       "name": "One row per profile",
       "type": "n8n-nodes-base.splitOut",
       "typeVersion": 1,
       "position": [
-        880,
-        0
+        840,
+        100
       ],
       "parameters": {
         "fieldToSplitOut": "profiles",
@@ -60,13 +201,13 @@
       }
     },
     {
-      "id": "c4",
+      "id": "1ed0bc0c-80b1-5993-a9b8-94e34511d0ed",
       "name": "Shape the row",
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        1100,
-        0
+        1000,
+        100
       ],
       "parameters": {
         "assignments": {
@@ -119,25 +260,25 @@
       }
     },
     {
-      "id": "c5",
-      "name": "Append to Google Sheets",
+      "id": "6cc2486a-bceb-5c91-b451-7412300ccf19",
+      "name": "Add rows to Google Sheets",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.7,
       "position": [
-        1320,
-        0
+        1180,
+        100
       ],
       "parameters": {
         "operation": "append",
         "documentId": {
           "__rl": true,
           "mode": "url",
-          "value": ""
+          "value": "={{ $('Your settings').first().json.sheet_url }}"
         },
         "sheetName": {
           "__rl": true,
-          "mode": "name",
-          "value": "Sheet1"
+          "mode": "list",
+          "value": "gid=0"
         },
         "columns": {
           "mappingMode": "autoMapInputData",
@@ -149,67 +290,61 @@
       }
     },
     {
-      "id": "c6",
-      "name": "How it works",
-      "type": "n8n-nodes-base.stickyNote",
-      "typeVersion": 1,
-      "position": [
-        -40,
-        -320
-      ],
       "parameters": {
-        "color": 5,
-        "width": 380,
-        "height": 260,
-        "content": "## Weekly competitor tracker\nEvery Monday Juicer looks up each competitor account and appends follower and post counts to a Google Sheet, so you can chart growth week by week.\n\n**Set up**\n1. Add your Juicer API key.\n2. In **Competitor accounts**, list one row per competitor and platform. Brands often use different handles per platform, so check each account's own bio before adding it.\n3. Connect Google Sheets and paste your sheet URL.\n\nOnly exact handle matches are kept. Credits per account: Instagram and TikTok 3, most others 1."
-      }
-    },
-    {
-      "id": "c7",
-      "name": "Exact matches only",
-      "type": "n8n-nodes-base.filter",
-      "typeVersion": 2.2,
-      "position": [
-        660,
-        0
-      ],
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "loose",
-            "version": 2
-          },
-          "conditions": [
-            {
-              "id": "f1",
-              "leftValue": "={{ $json.exact_match }}",
-              "rightValue": "",
-              "operator": {
-                "type": "boolean",
-                "operation": "true",
-                "singleValue": true
-              }
-            }
-          ],
-          "combinator": "and"
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "={{ $('Your settings').first().json.sheet_url }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gid=0"
         },
         "options": {}
-      }
+      },
+      "id": "fc8534ee-0931-507f-879d-ba09703ed19f",
+      "name": "Read the history",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1380,
+        100
+      ],
+      "executeOnce": true
     },
     {
-      "id": "c8",
-      "name": "Competitor accounts",
+      "parameters": {
+        "jsCode": "// Ranks every account by follower growth since its previous row in the sheet.\nconst thisWeek = $now.toFormat('yyyy-MM-dd');\nconst asDay = value => typeof value === 'number'\n  ? new Date(Math.round((value - 25569) * 86400000)).toISOString().slice(0, 10)\n  : String(value).slice(0, 10);\nconst byAccount = {};\nfor (const { json: row } of $input.all()) {\n  const key = row.platform + '|' + String(row.handle).toLowerCase();\n  (byAccount[key] ??= []).push({ ...row, week: asDay(row.week), followers: Number(String(row.followers).replace(/[^0-9.]/g, '')) });\n}\n\nconst changes = [];\nfor (const rows of Object.values(byAccount)) {\n  const current = rows.filter(row => row.week === thisWeek).at(-1);\n  const previous = rows.filter(row => row.week < thisWeek).sort((a, b) => a.week.localeCompare(b.week)).at(-1);\n  if (!current || !previous || !previous.followers) continue;\n  const change = current.followers - previous.followers;\n  changes.push({ name: current.competitor + ' on ' + current.platform, change, growth: (change / previous.followers) * 100, since: previous.week });\n}\n\nchanges.sort((a, b) => b.growth - a.growth);\nconst sign = n => (n >= 0 ? '+' : '');\nconst text = changes.length\n  ? '*Competitor growth this week* (vs ' + changes[0].since + ')\\n' + changes.map((c, i) =>\n      (i + 1) + '. ' + c.name + ': ' + sign(c.change) + c.change.toLocaleString('en-US') + ' followers (' +\n      sign(c.growth) + c.growth.toFixed(2) + '%)').join('\\n')\n  : 'First week logged. From next week this message ranks who grew fastest.';\nreturn [{ json: { text } }];"
+      },
+      "id": "7bd0e596-7831-5699-9df0-15d06caff288",
+      "name": "Compare with last week",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        220,
-        0
-      ],
+        1620,
+        100
+      ]
+    },
+    {
       "parameters": {
-        "jsCode": "// One row per competitor and platform. Brands often use different handles per\n// platform, so list each one, and check the account's own bio before adding it.\nconst accounts = [\n  { competitor: 'Competitor A', platform: 'Instagram', handle: 'competitor_a' },\n  { competitor: 'Competitor A', platform: 'Twitter', handle: 'competitora' },\n  { competitor: 'Competitor B', platform: 'YouTube', handle: 'competitorb' },\n  // Platforms: Instagram, TikTok, Twitter (X), YouTube, LinkedIn, Facebook, Pinterest, Bluesky\n];\nreturn accounts.map(account => ({ json: account }));"
-      }
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "={{ $('Your settings').first().json.slack_channel }}"
+        },
+        "text": "={{ $json.text }}",
+        "otherOptions": {}
+      },
+      "id": "b14a16cc-9629-5c29-964c-37f44df484f5",
+      "name": "Post the ranking to Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.3,
+      "position": [
+        1840,
+        100
+      ]
     }
   ],
   "connections": {
@@ -217,7 +352,29 @@
       "main": [
         [
           {
+            "node": "Your settings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Your settings": {
+      "main": [
+        [
+          {
             "node": "Competitor accounts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Competitor accounts": {
+      "main": [
+        [
+          {
+            "node": "Look up competitor profiles",
             "type": "main",
             "index": 0
           }
@@ -229,6 +386,17 @@
         [
           {
             "node": "Exact matches only",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Exact matches only": {
+      "main": [
+        [
+          {
+            "node": "One row per profile",
             "type": "main",
             "index": 0
           }
@@ -250,29 +418,40 @@
       "main": [
         [
           {
-            "node": "Append to Google Sheets",
+            "node": "Add rows to Google Sheets",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Exact matches only": {
+    "Add rows to Google Sheets": {
       "main": [
         [
           {
-            "node": "One row per profile",
+            "node": "Read the history",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Competitor accounts": {
+    "Read the history": {
       "main": [
         [
           {
-            "node": "Look up competitor profiles",
+            "node": "Compare with last week",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compare with last week": {
+      "main": [
+        [
+          {
+            "node": "Post the ranking to Slack",
             "type": "main",
             "index": 0
           }
@@ -282,5 +461,9 @@
   },
   "settings": {
     "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
   }
 }

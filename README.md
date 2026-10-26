@@ -100,9 +100,9 @@ When the balance runs out the node shows the error with a link to top up.
 
 The [`examples`](./examples) folder has three workflows to import:
 
-- **Daily social digest**: searches Reddit and TikTok for your keyword every morning, summarizes it with an AI model and posts it to Slack.
-- **Brand mention alert**: sends each new post from a Juicer listening feed to Telegram.
-- **Weekly competitor tracker**: appends follower and post counts for a list of competitor accounts (one handle per platform) to Google Sheets every Monday, exact handle matches only.
+- **Brand mention triage**: an AI model classifies each new post from a Juicer feed (complaint, question, praise, spam), alerts support in Telegram with a suggested reply, approves praise on your social wall, rejects spam and logs every decision to Google Sheets.
+- **Daily social digest**: searches Reddit and TikTok for your keyword every morning, summarizes it with an AI model, compares volume and negative share with the previous run and posts it to Slack with a heads-up when either jumps.
+- **Weekly competitor tracker**: appends follower and post counts for a list of competitor accounts (exact handle matches only) to Google Sheets every Monday, then ranks follower growth since last week in Slack.
 
 ## Compatibility
 

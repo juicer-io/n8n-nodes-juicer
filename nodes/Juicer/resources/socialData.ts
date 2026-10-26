@@ -230,6 +230,8 @@ export const socialDataDescription: INodeProperties[] = [
 		displayName: 'Term Type',
 		name: 'termType',
 		type: 'options',
+		// A mode picker, not an option: Reddit and Google cannot be searched without choosing one.
+		noDataExpression: true,
 		options: termTypeOptions,
 		default: 'auto',
 		description:
