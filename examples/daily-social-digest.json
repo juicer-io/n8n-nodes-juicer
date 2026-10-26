@@ -1,9 +1,9 @@
 {
-  "name": "Summarize daily Reddit and TikTok brand mentions to Slack with Juicer and OpenAI",
+  "name": "Send a daily Reddit and TikTok brand mention digest with trend alerts to Slack using Juicer and OpenAI",
   "nodes": [
     {
       "parameters": {
-        "content": "## Daily social digest in Slack\nFor marketers and founders who want a two-minute morning read on what people say about their brand or topic, without opening every network.\n\n### How it works\n1. Every morning the Juicer node searches Reddit and TikTok for your keyword in one call.\n2. A Code step keeps posts from the last 2 days that really mention it.\n3. An OpenAI model writes a short digest: the main themes, the mood and the 3 posts worth reading.\n4. The digest is posted to Slack.\n\n### Setup\nAbout 10 minutes.\n\n1. Add your Juicer API key (Developer page in Juicer) to **Search Reddit and TikTok**.\n2. Set your keyword and Slack channel in **Your settings**.\n3. Connect OpenAI and Slack.\n4. Click **Execute workflow** to test, then activate it.\n\nEach run spends Juicer API credits per platform (Reddit 1, TikTok 3).\n\n### Requirements\n- A Juicer account with an API key\n- OpenAI and Slack accounts\n\n### Customization tips\n- Add X, Instagram, YouTube or LinkedIn. For those, use a #hashtag with Term Type Hashtag.\n- Change the hour in **Every morning**.\n\nThis template uses the verified Juicer community node (n8n-nodes-juicer). On self-hosted n8n, install it first under Settings > Community nodes.",
+        "content": "## Daily social digest with trend alerts\nFor marketers and founders who want a two-minute morning read on what people say about their brand plus a warning when the conversation suddenly grows or turns negative.\n\n### How it works\n1. Every morning the Juicer node searches Reddit and TikTok for your keyword in one call.\n2. A Code step keeps posts from the last 2 days that really mention it.\n3. An OpenAI model writes the digest (themes, mood, 3 posts worth reading) and estimates the share of negative posts.\n4. The workflow compares volume and negative share with the previous run and adds a heads-up line when either jumps.\n5. The digest is posted to Slack.\n\n### Setup\nAbout 10 minutes.\n\n1. Add your Juicer API key (Developer page in Juicer) to **Search Reddit and TikTok**.\n2. Set your keyword, Slack channel and alert thresholds in **Your settings**.\n3. Connect OpenAI and Slack.\n4. Activate the workflow. The comparison is remembered between scheduled runs, not manual test runs.\n\nEach run spends Juicer API credits per platform (Reddit 1, TikTok 3).\n\n### Requirements\n- A Juicer account with an API key\n- OpenAI and Slack accounts\n\n### Customization tips\n- Add X, Instagram, YouTube or LinkedIn. For those, use a #hashtag with Term Type Hashtag.\n- Change the hour in **Every morning**.\n\nThis template uses the verified Juicer community node (n8n-nodes-juicer). On self-hosted n8n, install it first under Settings > Community nodes.",
         "height": 900,
         "width": 460,
         "color": 1
@@ -35,17 +35,33 @@
     },
     {
       "parameters": {
-        "content": "## 2. Summarize and share\nCombine the posts, let the AI write the digest and send it to Slack.",
+        "content": "## 2. Summarize and compare\nThe AI writes the digest; the workflow compares it with the last run.",
         "height": 900,
-        "width": 760,
+        "width": 780,
         "color": 7
       },
-      "id": "b789d836-8032-56c5-b76e-5daf58893523",
-      "name": "Summarize and share",
+      "id": "9faacdba-9f21-52f1-ac07-43d29d202249",
+      "name": "Summarize and compare",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
         700,
+        -240
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 3. Share it\nPost the digest to Slack.",
+        "height": 900,
+        "width": 300,
+        "color": 7
+      },
+      "id": "647be316-c85c-5c6d-a21f-44791f1d5a95",
+      "name": "Share it",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1500,
         -240
       ]
     },
@@ -84,6 +100,18 @@
               "name": "slack_channel",
               "value": "#REPLACE_WITH_CHANNEL",
               "type": "string"
+            },
+            {
+              "id": "volume_jump_percent",
+              "name": "volume_jump_percent",
+              "value": 50,
+              "type": "number"
+            },
+            {
+              "id": "negative_jump_points",
+              "name": "negative_jump_points",
+              "value": 15,
+              "type": "number"
             }
           ]
         },
@@ -152,28 +180,37 @@
       }
     },
     {
-      "id": "7da6d531-2bff-5240-844e-131111629881",
-      "name": "Write the digest",
-      "type": "@n8n/n8n-nodes-langchain.chainLlm",
-      "typeVersion": 1.7,
-      "position": [
-        940,
-        100
-      ],
       "parameters": {
-        "promptType": "define",
-        "text": "=You are a social media analyst. Below are recent social posts about our topic as JSON. Write a short Slack digest: 3 to 5 themes people talk about, the overall mood, and the 3 posts most worth reading with their links. Use Slack formatting: *bold* with single asterisks, plain lists, no headings and no tables.\n\n{{ JSON.stringify($json.posts.map(post => ({ platform: post.platform, author: post.poster?.name, text: (post.message || '').slice(0, 400), url: post.url, likes: post.like_count }))) }}"
-      }
-    },
-    {
-      "id": "0caa2b38-e2f9-5daa-9265-52f82b4d280a",
-      "name": "OpenAI model",
-      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+        "text": "=You are a social media analyst. Below are recent social posts about our topic as JSON.\n\n{{ JSON.stringify($json.posts.map(post => ({ platform: post.platform, author: post.poster?.name, text: (post.message || '').slice(0, 400), url: post.url }))) }}",
+        "schemaType": "fromAttributes",
+        "attributes": {
+          "attributes": [
+            {
+              "name": "digest",
+              "type": "string",
+              "required": true,
+              "description": "A short Slack digest: 3 to 5 themes people talk about, the overall mood and the 3 posts most worth reading with their links. Use Slack formatting: *bold* with single asterisks, plain lists, no headings and no tables."
+            },
+            {
+              "name": "negative_share",
+              "type": "number",
+              "required": true,
+              "description": "Percent of the posts (0 to 100) that are negative about the topic."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "8ce241a6-c912-57f4-ae8e-718a72b2b347",
+      "name": "Write the digest",
+      "type": "@n8n/n8n-nodes-langchain.informationExtractor",
       "typeVersion": 1.2,
       "position": [
-        940,
-        300
-      ],
+        960,
+        100
+      ]
+    },
+    {
       "parameters": {
         "model": {
           "__rl": true,
@@ -181,7 +218,28 @@
           "value": "gpt-4o-mini"
         },
         "options": {}
-      }
+      },
+      "id": "0caa2b38-e2f9-5daa-9265-52f82b4d280a",
+      "name": "OpenAI model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        960,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Compares this run with the previous one. Workflow static data keeps the numbers\n// between scheduled runs of the active workflow; manual test runs do not save it.\nconst memory = $getWorkflowStaticData('global');\nconst settings = $('Your settings').first().json;\nconst posts = $('Combine posts').first().json.posts.length;\nconst verdict = $input.first().json.output;\nconst digest = verdict.digest;\nconst negativeShare = Math.round(Number(verdict.negative_share) || 0);\nconst last = memory.lastRun;\nconst lines = [];\n\nif (last) {\n  const volumeChange = last.posts ? Math.round(((posts - last.posts) / last.posts) * 100) : null;\n  const sign = n => (n >= 0 ? '+' : '') + n;\n  lines.push('Posts: ' + posts + ' (last run ' + last.posts + (volumeChange === null ? '' : ', ' + sign(volumeChange) + '%') +\n    '). Negative: ' + negativeShare + '% (last run ' + last.negativeShare + '%).');\n  const alerts = [];\n  if (volumeChange !== null && volumeChange > 0 && posts >= 5 && volumeChange >= Number(settings.volume_jump_percent)) {\n    alerts.push('mentions are up ' + volumeChange + '%');\n  }\n  const rise = negativeShare - last.negativeShare;\n  if (rise > 0 && rise >= Number(settings.negative_jump_points)) {\n    alerts.push('negative posts rose from ' + last.negativeShare + '% to ' + negativeShare + '%');\n  }\n  if (alerts.length) lines.unshift(':warning: *Heads up:* ' + alerts.join(' and ') + '.');\n} else {\n  lines.push('Posts: ' + posts + '. Negative: ' + negativeShare + '%. The next digest will compare with this one.');\n}\n\nmemory.lastRun = { posts, negativeShare, at: new Date().toISOString() };\nreturn [{ json: { text: lines.join('\\n') + '\\n\\n' + digest } }];"
+      },
+      "id": "739dc418-76e1-5332-be72-89a1bb5c0d58",
+      "name": "Compare with the last run",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1280,
+        100
+      ]
     },
     {
       "id": "04c1cd50-2ecf-5885-b0f7-86881dc14b72",
@@ -189,7 +247,7 @@
       "type": "n8n-nodes-base.slack",
       "typeVersion": 2.3,
       "position": [
-        1260,
+        1600,
         100
       ],
       "parameters": {
@@ -261,6 +319,17 @@
       ]
     },
     "Write the digest": {
+      "main": [
+        [
+          {
+            "node": "Compare with the last run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compare with the last run": {
       "main": [
         [
           {
